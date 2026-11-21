@@ -1,0 +1,26 @@
+{
+  "version": 2,
+  "skills": {
+    "opentui": {
+      "source": "anomalyco/opentui",
+      "commit": "79c1159c2711af90dbf9ba1b0e04223a6afc4b7e",
+      "sourceType": "github",
+      "skillPath": "packages/web/src/content/SKILL.md",
+      "computedHash": "bb97f8aadd4944fdc3ccbf7427a06c5aab3ef57a9b05e988e8d39b4c0aeb2ee4"
+    },
+    "solid-js-1x-best-practices-and-api": {
+      "source": "doeixd/solid-skill",
+      "commit": "d0b77a86435c9d6a180cc9e36112a8e5b850e4f3",
+      "sourceType": "github",
+      "skillPath": "solid-js-1.x-best-practices-and-api/SKILL.md",
+      "computedHash": "c8579f9560d0b8a9fdc7da5eafb89750dcbc2c1c3846e89cd520f92b201acdfd"
+    },
+    "zod": {
+      "source": "pproenca/dot-skills",
+      "commit": "cf93c57cac89d6fc3e4194686000411567f5caf3",
+      "sourceType": "github",
+      "skillPath": "skills/.curated/zod/SKILL.md",
+      "computedHash": "0dda8a9c32affa99f4981924798d7399f0f5bd3ecc37910cfc4b05f260f442cd"
+    }
+  }
+}

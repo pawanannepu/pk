@@ -1,0 +1,30 @@
+# Lint, typecheck, boundary check and tests on every push (spec 0001, "CI").
+name: ci
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  check:
+    name: check (${{ matrix.os }})
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-22.04, macos-15]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v7
+      - uses: oven-sh/setup-bun@v2
+        with:
+          # The exact version pinned in package.json "packageManager".
+          bun-version-file: package.json
+      - run: bun install --frozen-lockfile
+      - run: bun run check

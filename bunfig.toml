@@ -1,0 +1,13 @@
+# Root Bun config. Read by `bun install`, `bun test` and `bun run` from the repo root.
+# The compiled `pk` binary never reads this file (autoload is off in scripts/build.ts).
+
+[install]
+# One node_modules at the root. scripts/ (build, boundary check) import tool
+# packages such as the OpenTUI Solid plugin, and scripts/check-boundaries.ts
+# is what keeps each package honest about its declared dependencies.
+linker = "hoisted"
+
+[test]
+# 1. Compile Solid JSX for the tui tests.
+# 2. Point PK_HOME at a fresh temp dir so no test touches your real ~/.pk.
+preload = ["@opentui/solid/preload", "./scripts/test-preload.ts"]

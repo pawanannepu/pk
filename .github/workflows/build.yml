@@ -1,0 +1,57 @@
+# Builds the pk binary natively on each target's own runner and smoke runs it there
+# (spec 0001, "Packaging" and "CI"). OpenTUI's own CI covers only macOS arm64 and
+# Linux x64, so this is the only place the other two targets are proven.
+# Tagged releases, signing and install channels belong to #29.
+name: build
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: build-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    name: ${{ matrix.target }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - target: bun-darwin-arm64
+            runner: macos-15
+            binary: dist/pk-darwin-arm64
+          - target: bun-darwin-x64-baseline
+            runner: macos-15-intel
+            binary: dist/pk-darwin-x64
+          - target: bun-linux-x64-baseline
+            runner: ubuntu-22.04
+            binary: dist/pk-linux-x64
+          - target: bun-linux-arm64
+            runner: ubuntu-22.04-arm
+            binary: dist/pk-linux-arm64
+    runs-on: ${{ matrix.runner }}
+    steps:
+      - uses: actions/checkout@v7
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version-file: package.json
+      - run: bun install --frozen-lockfile
+      - run: bun run build --target ${{ matrix.target }}
+      # pk --version, then pk __tui-smoke in a PTY (one resize, Ctrl+C, Ctrl+Z, terminal
+      # restore), then the native library home cases (1) to (7) of spec 0001: the library
+      # lands in <PK_HOME>/native/<id>/ via a self exec, never TMPDIR. On Linux this job is
+      # the gate for that proof. Prints binary size and startup.
+      - run: bun run test:e2e --binary ${{ matrix.binary }}
+      - uses: actions/upload-artifact@v7
+        with:
+          name: pk-${{ matrix.target }}
+          path: ${{ matrix.binary }}
+          if-no-files-found: error
+          retention-days: 7

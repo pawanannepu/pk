@@ -1,0 +1,10 @@
+{
+  "version": 2,
+  "name": "terminal-ui",
+  "owner": "ratacat",
+  "repo": "claude-skills",
+  "path": "skills/terminal-ui",
+  "branch": "main",
+  "sha": "8ab80b4c963f494fde00854afb3b3227901d4377",
+  "source": "manual"
+}

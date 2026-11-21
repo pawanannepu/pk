@@ -1,0 +1,31 @@
+{
+	"name": "pk",
+	"version": "0.0.0",
+	"description": "An open source terminal AI coding agent.",
+	"private": true,
+	"type": "module",
+	"packageManager": "bun@1.4.4",
+	"engines": {
+		"bun": ">=1.4.4"
+	},
+	"workspaces": [
+		"packages/*"
+	],
+	"scripts": {
+		"dev": "bun --preload @opentui/solid/preload packages/cli/src/main.ts",
+		"build": "bun run scripts/build.ts",
+		"typecheck": "bun run scripts/typecheck.ts",
+		"lint": "biome check .",
+		"format": "biome check --write .",
+		"boundaries": "bun run scripts/check-boundaries.ts",
+		"test": "bun test",
+		"test:e2e": "bun run scripts/e2e.ts",
+		"check": "bun run lint && bun run typecheck && bun run boundaries && bun run test"
+	},
+	"devDependencies": {
+		"@biomejs/biome": "2.6.8",
+		"@types/bun": "1.4.4",
+		"@types/node": "24.19.2",
+		"typescript": "7.0.2"
+	}
+}

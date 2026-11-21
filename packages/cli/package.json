@@ -1,0 +1,16 @@
+{
+	"name": "@pk/cli",
+	"private": true,
+	"type": "module",
+	"exports": {
+		".": "./src/index.ts"
+	},
+	"scripts": {
+		"typecheck": "tsc --noEmit -p ."
+	},
+	"dependencies": {
+		"@pk/env": "workspace:*",
+		"@pk/tui": "workspace:*",
+		"commander": "15.1.0"
+	}
+}
