@@ -336,8 +336,12 @@ describe("ensureNativeHome: trusted path check", () => {
 	});
 
 	test("a relative PK_HOME is made absolute first", () => {
-		const { fs, add } = fakeFs();
-		add("/", { uid: ROOT, mode: 0o1777 }); // so the fake can hold any cwd
+		const { fs, entries, add } = fakeFs();
+		// The real cwd already exists on a real machine, so put it in the fake as yours.
+		// Widening "/" is not enough: on a Linux runner cwd is under /home, which the fake seeds as root's 0755.
+		for (const dir of ancestorsOf(process.cwd())) {
+			if (!entries.has(dir)) add(dir);
+		}
 		const result = ensureNativeHome(deps(fs, { env: { PK_HOME: "rel/pk" } }).d);
 		expect(result.kind).toBe("exec");
 		expect(
