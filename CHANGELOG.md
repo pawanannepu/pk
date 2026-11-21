@@ -7,6 +7,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+
 - The first `pk` project: a TypeScript workspace on Bun 1.4.4, split into one package per module (`schema`, `env`, `provider`, `provider-openai`, `permissions`, `tools`, `agent`, `tui`, `headless`, `cli`). Most of them are stubs for now (see spec 0001).
 - `pk --version` and `pk --help`. Bare `pk` says interactive mode is not built yet and prints the help.
 - One standalone `pk` binary per target, built with `bun run build`: macOS arm64, macOS x64, Linux x64 and Linux arm64 (glibc). The binary does not load a project's `.env` or `bunfig.toml`.

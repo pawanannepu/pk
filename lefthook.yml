@@ -1,0 +1,19 @@
+# Git hooks (root AGENTS.md, "Tooling"). Installed into .git/hooks by `bun install`.
+# Tests are not run here: they run in `bun run check` and in CI.
+# Skip once with `LEFTHOOK=0 git commit ...` or `git commit --no-verify`.
+pre-commit:
+  commands:
+    # 1. Lint and format only the staged files, auto fixing and staging the fixes.
+    biome:
+      run: bunx biome check --write --no-errors-on-unmatched --files-ignore-unknown=true --colors=off {staged_files}
+      stage_fixed: true
+      priority: 1
+    # 2. Then the whole workspace type check and module boundary check (both fast).
+    typecheck:
+      glob: "*.{ts,tsx}"
+      run: bun run typecheck
+      priority: 2
+    boundaries:
+      glob: "*.{ts,tsx,json}"
+      run: bun run boundaries
+      priority: 3

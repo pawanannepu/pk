@@ -73,7 +73,7 @@ function fakeFs(euid = ME) {
 		mkdir: (path, mode) => {
 			const real = resolveLinks(parentOf(path));
 			const parent = entries.get(real);
-			if (!parent || parent.type !== "dir") throw errno("ENOENT");
+			if (parent?.type !== "dir") throw errno("ENOENT");
 			if (
 				(parent.mode & 0o200) === 0 ||
 				(parent.uid !== euid && (parent.mode & 0o002) === 0)

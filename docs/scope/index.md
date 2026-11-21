@@ -14,7 +14,7 @@ _These are recommendations to keep your build orderly, not requirements. Skip an
 | # | Feature | Phase | Status | Epic |
 |---|---------|-------|--------|------|
 | 1 | Stack & architecture | Foundation | in-progress | [foundations](foundations.md) |
-| 2 | Coding standards & tooling | Foundation | planned | [foundations](foundations.md) |
+| 2 | Coding standards & tooling | Foundation | done | [foundations](foundations.md) |
 | 3 | Core data model | Foundation | planned | [foundations](foundations.md) |
 | 4 | Terminal UI foundation | Foundation | planned | [foundations](foundations.md) |
 | 5 | Provider layer & OpenAI compatible adapter | Slice 1 | planned | [providers](providers.md) |
@@ -74,7 +74,7 @@ Deferred (no slice yet): Windows support, screen reader mode, Linux musl support
 
 ## Epics
 
-- [foundations](foundations.md): 1 in progress, 3 planned. Stack, standards, data model, terminal UI foundation.
+- [foundations](foundations.md): 1 done, 1 in progress, 2 planned. Stack, standards, data model, terminal UI foundation.
 - [providers](providers.md): 8 planned. The provider layer, adapters, login, catalog, model roles, costs, subscription sign in.
 - [agent](agent.md): 7 planned. The loop, context, system prompt, sessions, compaction, hooks, subagents.
 - [tools](tools.md): 6 planned. File, shell, search, to do, MCP and web tools.

@@ -18,8 +18,8 @@ spec [0001](../specs/0001-stack-architecture/index.md) · code in [packages/](..
 ### 2. Coding standards & tooling
 Capture conventions and tooling choices from the real scaffolded project, then install lint, format, type strictness, pre commit checks and CI so all later code follows them.
 **Done when:** root `AGENTS.md` reflects the real stack, and lint, format, tests and CI run clean on the empty project.
-- [ ] Capture conventions + tooling choices: `/audit`
-- [ ] Install the tooling: `/develop tooling`
+- [x] Capture conventions + tooling choices: `/audit`
+- [x] Install the tooling: `/develop tooling`
 
 ### 3. Core data model · needs a decision
 The provider neutral shapes everything shares: messages and content blocks, tool definitions, tool calls and results, usage and cost records, session files, and the config and settings schema (user and project level).
