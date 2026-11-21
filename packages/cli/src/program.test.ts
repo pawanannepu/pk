@@ -88,4 +88,37 @@ describe("unsupportedPlatformMessage", () => {
 		).toContain("musl");
 		expect(unsupportedPlatformMessage(probe("win32"))).toContain("Windows");
 	});
+
+	test("a musl loader in /usr/lib alone is enough to refuse", () => {
+		expect(
+			unsupportedPlatformMessage(
+				probe("linux", [], {
+					"/lib": ["ld-linux-x86-64.so.2"],
+					"/usr/lib": ["ld-musl-x86_64.so.1"],
+				}),
+			),
+		).toContain("musl");
+	});
+
+	test("Linux with unreadable or empty library folders is treated as glibc", () => {
+		expect(unsupportedPlatformMessage(probe("linux"))).toBeUndefined();
+	});
+
+	test("macOS never looks for musl files", () => {
+		const looked: string[] = [];
+		const watching = {
+			platform: "darwin" as const,
+			fileExists: (path: string) => {
+				looked.push(path);
+				return true;
+			},
+			listDir: (path: string) => {
+				looked.push(path);
+				return ["ld-musl-x.so.1"];
+			},
+		};
+
+		expect(unsupportedPlatformMessage(watching)).toBeUndefined();
+		expect(looked).toEqual([]);
+	});
 });

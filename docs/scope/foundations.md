@@ -10,10 +10,10 @@ Decide the language, runtime and module layout (provider layer, agent loop, tool
 spec [0001](../specs/0001-stack-architecture/index.md) · code in [packages/](../../packages/)
 - [x] Decide the stack (spec): `/architect stack & architecture`
 - [x] Scaffold from the decision: `/develop stack & architecture`
-- [ ] Verify it: `/check verify stack & architecture`
-- [ ] Test it: `/test stack & architecture`
-- [ ] Review it (fresh model): `/check review stack & architecture`
-- [ ] Document it: `/document stack & architecture`
+- [x] Verify it: `/check verify stack & architecture`
+- [x] Test it: `/test stack & architecture`
+- [x] Review it (fresh model): `/check review stack & architecture`
+- [x] Document it: `/document stack & architecture`
 
 ### 2. Coding standards & tooling
 Capture conventions and tooling choices from the real scaffolded project, then install lint, format, type strictness, pre commit checks and CI so all later code follows them.
