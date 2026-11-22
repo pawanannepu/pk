@@ -37,6 +37,12 @@ describe("pk cli", () => {
 		expect(c.out()).not.toContain("__tui-smoke");
 	});
 
+	test("--help lists --no-project-settings (spec 0002 AC-12)", async () => {
+		const c = capture();
+		expect(await main(argv("--help"), c.io)).toBe(EXIT.success);
+		expect(c.out()).toContain("--no-project-settings");
+	});
+
 	test("an unknown flag is a usage error (exit 2)", async () => {
 		const c = capture();
 		expect(await main(argv("--nope"), c.io)).toBe(EXIT.usage);

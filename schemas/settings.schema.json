@@ -1,0 +1,201 @@
+{
+	"$schema": "https://json-schema.org/draft/2020-12/schema",
+	"type": "object",
+	"properties": {
+		"$schema": {
+			"type": "string"
+		},
+		"model": {
+			"description": "Models by role, each a \"provider/model\" string or { provider, model }.",
+			"type": "object",
+			"properties": {
+				"main": {
+					"anyOf": [
+						{
+							"type": "object",
+							"properties": {
+								"provider": {
+									"type": "string",
+									"pattern": "^[a-z0-9][a-z0-9_-]{0,31}$"
+								},
+								"model": {
+									"type": "string",
+									"minLength": 1
+								}
+							},
+							"required": [
+								"provider",
+								"model"
+							]
+						},
+						{
+							"type": "string",
+							"description": "A model as \"provider/model\", split at the first \"/\", for example \"openrouter/anthropic/claude-x\".",
+							"pattern": "^[a-z0-9][a-z0-9_-]{0,31}/.+$"
+						}
+					]
+				},
+				"summarize": {
+					"anyOf": [
+						{
+							"type": "object",
+							"properties": {
+								"provider": {
+									"type": "string",
+									"pattern": "^[a-z0-9][a-z0-9_-]{0,31}$"
+								},
+								"model": {
+									"type": "string",
+									"minLength": 1
+								}
+							},
+							"required": [
+								"provider",
+								"model"
+							]
+						},
+						{
+							"type": "string",
+							"description": "A model as \"provider/model\", split at the first \"/\", for example \"openrouter/anthropic/claude-x\".",
+							"pattern": "^[a-z0-9][a-z0-9_-]{0,31}/.+$"
+						}
+					]
+				},
+				"subagent": {
+					"anyOf": [
+						{
+							"type": "object",
+							"properties": {
+								"provider": {
+									"type": "string",
+									"pattern": "^[a-z0-9][a-z0-9_-]{0,31}$"
+								},
+								"model": {
+									"type": "string",
+									"minLength": 1
+								}
+							},
+							"required": [
+								"provider",
+								"model"
+							]
+						},
+						{
+							"type": "string",
+							"description": "A model as \"provider/model\", split at the first \"/\", for example \"openrouter/anthropic/claude-x\".",
+							"pattern": "^[a-z0-9][a-z0-9_-]{0,31}/.+$"
+						}
+					]
+				}
+			},
+			"additionalProperties": false
+		},
+		"providers": {
+			"description": "Provider endpoints and key sources. Only read from your user settings file.",
+			"type": "object",
+			"propertyNames": {
+				"type": "string",
+				"pattern": "^[a-z0-9][a-z0-9_-]{0,31}$"
+			},
+			"additionalProperties": {
+				"type": "object",
+				"properties": {
+					"api": {
+						"type": "string",
+						"enum": [
+							"openai_chat",
+							"anthropic_messages"
+						]
+					},
+					"baseURL": {
+						"type": "string",
+						"format": "uri"
+					},
+					"apiKey": {
+						"anyOf": [
+							{
+								"type": "object",
+								"properties": {
+									"env": {
+										"type": "string",
+										"pattern": "^[A-Z_][A-Z0-9_]*$"
+									}
+								},
+								"required": [
+									"env"
+								],
+								"additionalProperties": false
+							},
+							{
+								"type": "object",
+								"properties": {
+									"keychain": {
+										"type": "boolean",
+										"const": true
+									}
+								},
+								"required": [
+									"keychain"
+								],
+								"additionalProperties": false
+							}
+						]
+					}
+				},
+				"required": [
+					"api"
+				],
+				"additionalProperties": false
+			}
+		},
+		"permissions": {
+			"description": "Permission mode and rules. mode and allow are only read from your user settings file; deny and ask apply from any file.",
+			"type": "object",
+			"properties": {
+				"mode": {
+					"type": "string",
+					"enum": [
+						"normal",
+						"accept_edits",
+						"plan",
+						"skip_all"
+					]
+				},
+				"allow": {
+					"type": "array",
+					"items": {
+						"type": "string",
+						"minLength": 1
+					}
+				},
+				"deny": {
+					"type": "array",
+					"items": {
+						"type": "string",
+						"minLength": 1
+					}
+				},
+				"ask": {
+					"type": "array",
+					"items": {
+						"type": "string",
+						"minLength": 1
+					}
+				}
+			},
+			"additionalProperties": false
+		},
+		"limits": {
+			"type": "object",
+			"properties": {
+				"maxTurns": {
+					"type": "integer",
+					"exclusiveMinimum": 0,
+					"maximum": 9007199254740991
+				}
+			},
+			"additionalProperties": false
+		}
+	},
+	"additionalProperties": false
+}

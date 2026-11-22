@@ -15,6 +15,7 @@ export class PkError extends Error {
 	}
 }
 
+/** True when `value` is a `PkError` or a subclass. */
 export function isPkError(value: unknown): value is PkError {
 	return value instanceof PkError;
 }

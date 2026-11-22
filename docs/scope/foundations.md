@@ -21,10 +21,20 @@ Capture conventions and tooling choices from the real scaffolded project, then i
 - [x] Capture conventions + tooling choices: `/audit`
 - [x] Install the tooling: `/develop tooling`
 
-### 3. Core data model · needs a decision
+### 3. Core data model
 The provider neutral shapes everything shares: messages and content blocks, tool definitions, tool calls and results, usage and cost records, session files, and the config and settings schema (user and project level).
 **Done when:** every later feature (adapters, tools, sessions, headless JSON, bench) can be expressed in these shapes with no vendor specific field leaking into the loop or tools. (basis: the data model is the costliest thing to redo)
-- [ ] Design it (spec): `/architect core data model`
+spec [0002](../specs/0002-core-data-model/index.md) · code in [packages/schema/](../../packages/schema/), [packages/env/](../../packages/env/)
+- [x] Design it (spec): `/architect core data model`
+- [x] Build it: `/develop core data model`
+  - [x] Tracer thread: IDs, private JSONL write, session read back and fold, one key settings load (AC-4, AC-8, AC-12, AC-14, AC-16, AC-17)
+  - [x] Conversation and provider boundary: every block, repair, tool definitions, usage and cost, stream events, vendor field guard (AC-1, AC-2, AC-3, AC-5, AC-7)
+  - [x] Events and saved files: the full event union, session records and fold, blobs, cost and history records (AC-6, AC-8, AC-9, AC-10)
+  - [x] Settings and published schema: full settings, layered load with user only keys, project root and key, `schemas/settings.schema.json` (AC-11, AC-12, AC-13, AC-15, AC-17)
+- [x] Verify it: `/check verify core data model`
+- [x] Test it: `/test core data model`
+- [x] Review it (fresh model): `/check review core data model`
+- [x] Document it: `/document core data model`
 
 ### 4. Terminal UI foundation · needs a decision
 pk's visual language in the terminal: color tokens, how tool calls, diffs, prompts and errors look, and the plain output rules for `NO_COLOR`, pipes and narrow windows.

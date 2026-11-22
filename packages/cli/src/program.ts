@@ -50,6 +50,11 @@ export async function main(
 		.description("An open source terminal AI coding agent.")
 		.version(pkVersion(), "-v, --version", "print the pk version")
 		.option("--debug", "write debug logs and mirror them to stderr")
+		// Read by settings loading (spec 0002): skips .pk/settings.json and .pk/settings.local.json.
+		.option(
+			"--no-project-settings",
+			"ignore this project's .pk/settings.json and .pk/settings.local.json",
+		)
 		.exitOverride()
 		.configureOutput({
 			writeOut: (text) => io.stdout.write(text),

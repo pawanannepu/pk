@@ -1,8 +1,138 @@
 /**
- * @pk/schema: Zod schemas and types shared by every package: messages, content blocks, tool definitions, calls and results, usage, session records, settings, and the AgentEvent union.
+ * @pk/schema: the shapes every package shares, each a Zod 4 schema with its `z.infer` type, plus pure,
+ * non throwing helpers beside them. Messages and content blocks, tool definitions, calls and results,
+ * usage and cost, provider stream events, the `AgentEvent` union, saved file records and settings.
  *
- * Stub created by the scaffold (#1, spec 0001). The real shapes arrive with #3 Core data model.
- * See docs/specs/0001-stack-architecture/index.md, "Module map", for what this
- * package may depend on.
+ * pk owns these shapes: no vendor field appears here, and each provider adapter translates at its edge.
+ * Spec: docs/specs/0002-core-data-model/index.md. Depends on `zod` only (spec 0001 module map).
  */
-export {};
+export {
+	AssistantContentBlock,
+	AssistantMessage,
+	ImageBlock,
+	ImageMediaType,
+	Message,
+	ReasoningBlock,
+	ReasoningReplay,
+	StopReason,
+	TextBlock,
+	TOOL_NAME_PATTERN,
+	ToolCallBlock,
+	ToolName,
+	ToolResultBlock,
+	ToolResultContentBlock,
+	toolCallsOf,
+	toolResultsOf,
+	UserContentBlock,
+	UserMessage,
+} from "./conversation.ts";
+export {
+	AgentEvent,
+	type AgentEventOf,
+	type AgentEventType,
+	PermissionAnswer,
+	TodoItem,
+	TurnEndReason,
+	TurnError,
+} from "./events.ts";
+export { jsonSchemaOf, toolInputJsonSchema } from "./json-schema.ts";
+export {
+	AgentId,
+	ApiStyle,
+	CallId,
+	formatModelRef,
+	ID_SCHEMAS,
+	type IdPrefix,
+	type IdTypes,
+	JsonObject,
+	JsonValue,
+	MAIN_AGENT_ID,
+	MessageId,
+	ModelRef,
+	ModelRefInput,
+	ModelRole,
+	type NewId,
+	PROVIDER_ID_PATTERN,
+	ProviderId,
+	RequestId,
+	SessionId,
+	Timestamp,
+	TurnId,
+} from "./primitives.ts";
+export {
+	Cost,
+	CostTotals,
+	MicroUsd,
+	ModelRequest,
+	ProviderStreamEvent,
+	sumCosts,
+	sumUsage,
+	ToolDefinition,
+	ToolKind,
+	Usage,
+} from "./provider.ts";
+export { CostRecord, HistoryEntry } from "./records.ts";
+export {
+	type ConversationIssue,
+	type ConversationIssueCode,
+	checkConversation,
+	REPAIRED_RESULT_TEXT,
+	type RepairOptions,
+	type RepairResult,
+	repairConversation,
+} from "./repair.ts";
+export {
+	CompactionRecord,
+	type FoldOptions,
+	foldSessionRecords,
+	MessageRecord,
+	ModelChangeRecord,
+	SESSION_MIGRATIONS,
+	SESSION_VERSION,
+	SessionHeader,
+	type SessionMigration,
+	SessionRecord,
+	type SessionState,
+	sessionBlobHashes,
+	sessionRecordFromEvent,
+	TodoRecord,
+	TurnEndRecord,
+	UsageRecord,
+} from "./session.ts";
+export {
+	API_KEY_IN_FILE_MESSAGE,
+	ApiKeySource,
+	applySettingsRenames,
+	dropUserOnlySettings,
+	PermissionMode,
+	ProviderSettings,
+	parseSettingsLayer,
+	SETTINGS_RENAMES,
+	Settings,
+	type SettingsInput,
+	type SettingsIssue,
+	type SettingsKeyChange,
+	type SettingsLayerResult,
+	settingsJsonSchema,
+	USER_ONLY_SETTINGS,
+} from "./settings.ts";
+export {
+	BlobRef,
+	type BlobToWrite,
+	blobHashesOf,
+	fromStoredMessage,
+	IMAGE_UNAVAILABLE_TEXT,
+	StoredImageBlock,
+	StoredMessage,
+	StoredToolResultBlock,
+	StoredToolResultContentBlock,
+	StoredUserContentBlock,
+	StoredUserMessage,
+	type ToStoredOptions,
+	toStoredMessage,
+} from "./stored.ts";
+export {
+	checkStreamOrder,
+	type StreamIssue,
+	type StreamIssueCode,
+} from "./stream-order.ts";
