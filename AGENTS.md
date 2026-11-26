@@ -20,7 +20,8 @@ An open source terminal AI coding agent for macOS and Linux, shipped as one stan
 bun install --frozen-lockfile                # install
 bun run dev                                  # run pk from source
 bun run build [--target bun-linux-x64-baseline]   # compile the binary into dist/
-bun run check                                # lint, typecheck, boundaries, test (the gate)
+bun run check                                # lint, typecheck, boundaries, schemas --check, test (the gate)
+bun run schemas [--check]                    # regenerate (or check) schemas/settings.schema.json from Settings
 bun test [packages/<name>]                   # tests only
 bun run test:e2e --binary dist/pk-darwin-arm64    # drive the compiled binary in a PTY
 bun run format                               # Biome auto fix and format

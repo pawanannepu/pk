@@ -140,7 +140,7 @@ Reasoning, options weighed and references: see [rationale.md](rationale.md).
 
 ## Follow-up
 
-- [ ] #4 Terminal UI foundation: decide what interactive `pk` does when stdout is not a terminal (full screen is impossible there): refuse with a hint to use `pk -p`, or fall back to plain line output.
+- [x] #4 Terminal UI foundation: decide what interactive `pk` does when stdout is not a terminal (full screen is impossible there): refuse with a hint to use `pk -p`, or fall back to plain line output. Decided in [spec 0003](../0003-terminal-ui-foundation/index.md) (AC-20): refuse, exit 2, with a `pk -p` hint.
 - [ ] #4, #14, #15: full screen means pk owns scrolling, transcript search, text selection and copy (decide mouse capture versus native selection), and whether the transcript is printed to normal scrollback on exit.
 - [ ] #18 Login & keychain storage: pick a keychain mechanism that works inside a Bun compiled binary on all four targets (check whether Bun's built in secrets API fits; avoid native Node addons that can't be embedded).
 - [ ] #2 Coding standards & tooling: tighten Biome rules, add pre commit checks, and record these conventions in root `AGENTS.md`.

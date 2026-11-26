@@ -137,6 +137,19 @@ describe("loadSettings (AC-12)", () => {
 		expect(JSON.stringify(loaded.warnings)).not.toContain("evil.example");
 	});
 
+	test("a project file cannot change how pk draws (spec 0003 AC-21)", async () => {
+		const loaded = await loadSettings(
+			input({
+				[USER_FILE]: { ui: { ascii: true } },
+				[PROJECT_FILE]: { ui: { background: "terminal" } },
+			}),
+		);
+		expect(loaded.settings.ui).toEqual({ ascii: true });
+		expect(loaded.warnings.map((w) => [w.code, w.file, w.path])).toEqual([
+			["user_only_key", PROJECT_FILE, "ui"],
+		]);
+	});
+
 	test("the local project file is untrusted too", async () => {
 		const loaded = await loadSettings(
 			input({ [LOCAL_FILE]: { permissions: { mode: "skip_all" } } }),

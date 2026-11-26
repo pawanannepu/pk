@@ -299,6 +299,153 @@ try {
 		`exit ${suspended.exitCode}, alternate screen entered ${entered} time(s), tail ${tailOf(suspended)}`,
 	);
 
+	// spec 0003 AC-22: the scripted demo through the real shell, at 140x40.
+	const demoBase: Record<string, string> = {
+		TERM: "xterm-256color",
+		LANG: "en_US.UTF-8",
+		PK_HOME: mainHome.home,
+		TMPDIR: writableTmp,
+		PATH: process.env.PATH ?? "",
+	};
+	/** Plays two turns (both prompts answered), and the third turn's error when `full`, then Ctrl+C. */
+	const playDemo = async (env: Record<string, string>, full: boolean) => {
+		const chunks: Uint8Array[] = [];
+		const proc = Bun.spawn([binary, "__tui-demo", "--speed", "4"], {
+			env,
+			terminal: { cols: 140, rows: 40, data: (_t, data) => chunks.push(data) },
+		});
+		const killer = setTimeout(() => proc.kill("SIGKILL"), 60_000);
+		const text = () => Buffer.concat(chunks).toString("utf8");
+		const waitFor = async (
+			needle: string,
+			timeoutMs = 8_000,
+		): Promise<boolean> => {
+			const until = Date.now() + timeoutMs;
+			while (Date.now() < until) {
+				if (text().includes(needle)) return true;
+				await Bun.sleep(50);
+			}
+			return false;
+		};
+		const type = (keys: string) => proc.terminal?.write(keys);
+		const steps: Array<[string, boolean]> = [];
+		steps.push(["screen up", await waitFor("ask pk anything")]);
+		type("why does the loop retry twice?\r");
+		steps.push(["turn 1 cost", await waitFor("$0.0012")]);
+		await Bun.sleep(300); // turn_end follows the last usage event
+		type("fix the retry\r");
+		steps.push(["permission panel", await waitFor("PERMISSION")]);
+		await Bun.sleep(400);
+		type("y");
+		await Bun.sleep(700);
+		type("y");
+		steps.push(["bash result", await waitFor("2 tests failed")]);
+		if (full) {
+			// The renderer redraws only changed cells, so the full figure shows only on a fresh frame.
+			steps.push(["turn 2 cost", await waitFor("$0.0031")]);
+			await Bun.sleep(300);
+			type("search callers\r");
+			steps.push(["error block", await waitFor("rate_limited")]);
+		} else {
+			await Bun.sleep(300); // let the diff and the last frame land
+		}
+		type("\x03");
+		const exitCode = await proc.exited;
+		clearTimeout(killer);
+		await Bun.sleep(100);
+		proc.terminal?.close();
+		const missed = steps.filter(([, ok]) => !ok).map(([name]) => name);
+		return { exitCode, output: text(), missed };
+	};
+	{
+		const demo = await playDemo(demoBase, true);
+		const { output } = demo;
+		const restoredDemo =
+			output.lastIndexOf("\x1b[?1049l") > output.lastIndexOf("\x1b[?1049h") &&
+			output.lastIndexOf("\x1b[?25h") > output.lastIndexOf("\x1b[?25l");
+		check(
+			demo.missed.length === 0,
+			"demo: three turns, two prompts answered, the error block",
+			`missed ${demo.missed.join(", ")}`,
+		);
+		check(
+			demo.exitCode === 130 && restoredDemo,
+			"demo: Ctrl+C exits 130 with the terminal restored",
+			`exit ${demo.exitCode}, tail ${JSON.stringify(output.slice(-300))}`,
+		);
+	}
+
+	// spec 0003 AC-3 and AC-4: the color codes the binary actually writes, per color depth.
+	{
+		/** Every SGR sequence in the output, split into its parameters. */
+		const sgr = (output: string) =>
+			output
+				.split("\x1b[")
+				.slice(1)
+				.flatMap((part) => /^([0-9;]*)m/.exec(part)?.[1] ?? []);
+		const has = (codes: string[], re: RegExp) => codes.some((c) => re.test(c));
+		const play = async (name: string, env: Record<string, string>) => {
+			const run = await playDemo(env, false);
+			if (run.missed.length > 0 || run.exitCode !== 130)
+				check(
+					false,
+					`${name}: demo played`,
+					`missed ${run.missed.join(", ")}, exit ${run.exitCode}`,
+				);
+			return sgr(run.output);
+		};
+		const { COLORTERM: _unset, ...noColorterm } = demoBase;
+
+		const c16 = await play("16 colors", { ...noColorterm, TERM: "xterm" });
+		const rgb16 = c16.filter((c) => /(^|;)[34]8;2;/.test(c));
+		check(
+			rgb16.length === 0 &&
+				has(c16, /(^|;)38;5;3$/) &&
+				has(c16, /(^|;)38;5;2$/) &&
+				has(c16, /(^|;)38;5;1$/) &&
+				!has(c16, /(^|;)48;5;/),
+			"16 colors (TERM=xterm, no COLORTERM): amber, green and red are palette slots 3, 2 and 1; no RGB; the background is the terminal's",
+			`RGB codes ${JSON.stringify(rgb16.slice(0, 5))}, background codes ${JSON.stringify(c16.filter((c) => /(^|;)48;/.test(c)).slice(0, 5))}`,
+		);
+
+		const tc = await play("truecolor", { ...demoBase, COLORTERM: "truecolor" });
+		check(
+			has(tc, /(^|;)48;2;7;8;10$/),
+			"truecolor (COLORTERM=truecolor): the canvas is #07080A",
+		);
+
+		const nc = await play("NO_COLOR", {
+			...demoBase,
+			COLORTERM: "truecolor",
+			NO_COLOR: "1",
+		});
+		// OpenTUI clears blank cells with a white foreground; on a space it never shows.
+		const shown = nc.filter(
+			(c) => /(^|;)[34]8;/.test(c) && c !== "38;2;255;255;255",
+		);
+		check(
+			shown.length === 0 && !has(nc, /(^|;)48;/),
+			"NO_COLOR: no colors, the terminal's own background",
+			JSON.stringify(shown.slice(0, 5)),
+		);
+
+		const termHome = await caseHome("background-terminal");
+		await mkdir(termHome.home, { recursive: true, mode: 0o700 });
+		await Bun.write(
+			join(termHome.home, "settings.json"),
+			JSON.stringify({ ui: { background: "terminal" } }),
+		);
+		const tb = await play("ui.background terminal", {
+			...demoBase,
+			COLORTERM: "truecolor",
+			PK_HOME: termHome.home,
+		});
+		check(
+			!has(tb, /(^|;)48;2;7;8;10$/) && has(tb, /(^|;)38;2;/),
+			'ui.background "terminal" in truecolor: colors stay, the canvas is the terminal\'s',
+		);
+	}
+
 	// 3. Native library home.
 	const libraryIn = (dir: string) =>
 		entriesOf(dir).some((name) => name.startsWith(".bun-"));

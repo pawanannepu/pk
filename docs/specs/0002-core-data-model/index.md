@@ -1,7 +1,7 @@
 # 0002. Core data model: pk owned conversation, event, file and settings shapes
 
 **Date**: 2026-11-22
-**Status**: In Progress
+**Status**: Accepted
 
 ## Summary
 

@@ -1,0 +1,123 @@
+// Bun Snapshot v1, https://bun.sh/docs/test/snapshots
+
+exports[`widths (spec 0003 AC-6) the played demo at 140x40 matches its committed frame 1`] = `
+" ◢◣ PK  terminal coding agent                                       ~/code/demo                                       ◉ ready  ▲ 1  ◉ 1 err 
+─────┬─────┬─────┬─────┬─────┬─────┬─────┬─────┬─────┬─────┬─────┬─────┬─────┬─────┬─────┬─────┬─────┬─────┬─────┬─────┬─────┬─────┬─────┬──
+┌─ SESSION ───────────┐│      22   // retry policy line 22                                                          │┌─ ACTIVITY ──────────┐
+ demo/scripted         │      23   // retry policy line 23                                                          │ ✖ grep                
+ normal                │      24   // retry policy line 24                                                          │ ✖ bash bun tes…ovider 
+ demo                  │      25 - const RETRIES = 2;                                                               │ ◆ edit_file src/…y.ts 
+└─                   ─┘│      25 + const RETRIES = 3;                                                               │ ◆ read_file src/…x.ts 
+┌─ CONTEXT ───────────┐│      26 + const BASE_DELAY_MS = 500;                                                       │                       
+ ▓░░░░░░░░░  7%        │      27 + const MAX_DELAY_MS = 8_000;                                                      │                       
+ 13.9k tok             │      28   // retry policy line 26                                                          │                       
+└─                   ─┘│      29   // retry policy line 27                                                          │                       
+┌─ PLAN ──────────────┐│      30   // retry policy line 28                                                          │                       
+ ◆ raise the retry co… │      31   // retry policy line 29                                                          │                       
+ ⠋ fix the two failin… │      32   // retry policy line 30                                                          │                       
+ ◇ document the backo… │      33   // retry policy line 31                                                          │                       
+└─                   ─┘│      34   // retry policy line 32                                                          │                       
+┌─ FILES ─────────────┐│      35   // retry policy line 33                                                          │                       
+ src/provi…/index.ts r │      36   // retry policy line 34                                                          │                       
+ src/pro…etry.ts +3 -1 │      37   // retry policy line 35                                                          │                       
+└─                   ─┘│      38   // retry policy line 36                                                          │                       
+                       │      39   // retry policy line 37                                                          │                       
+                       │     … 12 more lines                                                                        │                       
+                       │   ✖ bash        bun test packages/provider                                 2 tests failed  │                       
+                       │   ▲ retrying after 429 (attempt 2 of 3)                                                    │                       
+                       │   Two tests still expect the old count. I'll update them next.                             │                       
+                       │                                                                                            │                       
+                       │ ┃ › search callers                                                                         │                       
+                       │   Searching for every caller of the retry policy.                                          │                       
+                       │   ✖ grep                                                                      interrupted  │                       
+                       │                                                                                            │                       
+                       │ ┌─ ERROR  provider.rate_limited ───────────────────────────────────────┐                   │                       
+                       │                                                                                            │└─                   ─┘
+                       │    OpenAI returned 429 after 3 retries.                                                    │┌─ TOKENS ────────────┐
+                       │    try: wait a minute, or switch model                                                     │ ▅█▃  140              
+                       │                                                                                            │└─                   ─┘
+                       │ └─                                                                    ─┘                   │┌─ COST ──────────────┐
+                       │ ┌─                                                                                      ─┐ │ $0.0031 +1 unpriced   
+                       │  › ask pk anything                                                                         │ last turn $0.0000     
+                       │ └─                                                                                      ─┘ │└─                   ─┘
+ ■ normal   ■ demo/scripted   ■ 31.9k tok   ■ $0.0031 +1 unpriced                                             ctrl+b/f2 rails · ctrl+c quit 
+"
+`;
+
+exports[`widths (spec 0003 AC-6) the played demo at 120x40 matches its committed frame 1`] = `
+" ◢◣ PK  terminal coding agent                             ~/code/demo                             ◉ ready  ▲ 1  ◉ 1 err 
+─────┬─────┬─────┬─────┬─────┬─────┬─────┬─────┬─────┬─────┬─────┬─────┬─────┬─────┬─────┬─────┬─────┬─────┬─────┬─────┬
+     22   // retry policy line 22                                                               │┌─ ACTIVITY ──────────┐
+     23   // retry policy line 23                                                               │ ✖ grep                
+     24   // retry policy line 24                                                               │ ✖ bash bun tes…ovider 
+     25 - const RETRIES = 2;                                                                    │ ◆ edit_file src/…y.ts 
+     25 + const RETRIES = 3;                                                                    │ ◆ read_file src/…x.ts 
+     26 + const BASE_DELAY_MS = 500;                                                            │                       
+     27 + const MAX_DELAY_MS = 8_000;                                                           │                       
+     28   // retry policy line 26                                                               │                       
+     29   // retry policy line 27                                                               │                       
+     30   // retry policy line 28                                                               │                       
+     31   // retry policy line 29                                                               │                       
+     32   // retry policy line 30                                                               │                       
+     33   // retry policy line 31                                                               │                       
+     34   // retry policy line 32                                                               │                       
+     35   // retry policy line 33                                                               │                       
+     36   // retry policy line 34                                                               │                       
+     37   // retry policy line 35                                                               │                       
+     38   // retry policy line 36                                                               │                       
+     39   // retry policy line 37                                                               │                       
+    … 12 more lines                                                                             │                       
+  ✖ bash        bun test packages/provider                                      2 tests failed  │                       
+  ▲ retrying after 429 (attempt 2 of 3)                                                         │                       
+  Two tests still expect the old count. I'll update them next.                                  │                       
+                                                                                                │                       
+┃ › search callers                                                                              │                       
+  Searching for every caller of the retry policy.                                               │                       
+  ✖ grep                                                                           interrupted  │                       
+                                                                                                │                       
+┌─ ERROR  provider.rate_limited ───────────────────────────────────────┐                        │                       
+                                                                                                │└─                   ─┘
+   OpenAI returned 429 after 3 retries.                                                         │┌─ TOKENS ────────────┐
+   try: wait a minute, or switch model                                                          │ ▅█▃  140              
+                                                                                                │└─                   ─┘
+└─                                                                    ─┘                        │┌─ COST ──────────────┐
+┌─                                                                                           ─┐ │ $0.0031 +1 unpriced   
+ › ask pk anything                                                                              │ last turn $0.0000     
+└─                                                                                           ─┘ │└─                   ─┘
+ ■ normal   ■ demo/scripted   ■ 31.9k tok   ■ $0.0031 +1 unpriced                         ctrl+b/f2 rails · ctrl+c quit 
+"
+`;
+
+exports[`widths (spec 0003 AC-6) the played demo at 80x30 matches its committed frame 1`] = `
+" ◢◣ PK  terminal coding agent         ~/code/demo         ◉ ready  ▲ 1  ◉ 1 err 
+─────┬─────┬─────┬─────┬─────┬─────┬─────┬─────┬─────┬─────┬─────┬─────┬─────┬──
+     31   // retry policy line 29                                               
+     32   // retry policy line 30                                               
+     33   // retry policy line 31                                               
+     34   // retry policy line 32                                               
+     35   // retry policy line 33                                               
+     36   // retry policy line 34                                               
+     37   // retry policy line 35                                               
+     38   // retry policy line 36                                               
+     39   // retry policy line 37                                               
+    … 12 more lines                                                             
+  ✖ bash        bun test packages/provider                       2 tests failed 
+  ▲ retrying after 429 (attempt 2 of 3)                                         
+  Two tests still expect the old count. I'll update them next.                  
+                                                                                
+┃ › search callers                                                              
+  Searching for every caller of the retry policy.                               
+  ✖ grep                                                            interrupted 
+                                                                                
+┌─ ERROR  provider.rate_limited ───────────────────────────────────────┐        
+                                                                                
+   OpenAI returned 429 after 3 retries.                                         
+   try: wait a minute, or switch model                                          
+                                                                                
+└─                                                                    ─┘        
+┌─                                                                            ─┐
+ › ask pk anything                                                              
+└─                                                                            ─┘
+ ■ normal   ■ demo/scripted   ■ 31.9k tok   ■ $0.0031 +1 unpriced               
+"
+`;

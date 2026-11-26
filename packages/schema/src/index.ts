@@ -26,6 +26,7 @@ export {
 	UserContentBlock,
 	UserMessage,
 } from "./conversation.ts";
+export { FileTouch, ToolDisplayDetails } from "./display.ts";
 export {
 	AgentEvent,
 	type AgentEventOf,

@@ -195,6 +195,25 @@
 				}
 			},
 			"additionalProperties": false
+		},
+		"ui": {
+			"description": "How the full screen UI draws. Only read from your user settings file.",
+			"type": "object",
+			"properties": {
+				"background": {
+					"description": "\"pk\" paints pk's near black canvas (the default); \"terminal\" keeps your terminal's own background.",
+					"type": "string",
+					"enum": [
+						"pk",
+						"terminal"
+					]
+				},
+				"ascii": {
+					"description": "Draw with plain ASCII glyphs instead of Unicode. Default false; also on when the locale is not UTF-8.",
+					"type": "boolean"
+				}
+			},
+			"additionalProperties": false
 		}
 	},
 	"additionalProperties": false

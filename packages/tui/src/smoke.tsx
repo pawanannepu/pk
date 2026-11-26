@@ -1,32 +1,12 @@
-import { type CliRenderer, createCliRenderer } from "@opentui/core";
-import {
-	onResize,
-	render,
-	useKeyboard,
-	useTerminalDimensions,
-} from "@opentui/solid";
+import { onResize, useKeyboard, useTerminalDimensions } from "@opentui/solid";
 import { createSignal } from "solid-js";
+import { openScreen, type TuiHandle } from "./screen.ts";
 
 /** What the smoke screen saw before it closed. `cli` prints it so a PTY harness can assert on it. */
 export interface SmokeResult {
 	readonly resizes: number;
 	readonly width: number;
 	readonly height: number;
-}
-
-/**
- * A running full screen UI. `cli` owns the process (signals, exit codes, terminal restore) and drives
- * the screen only through this handle, so OpenTUI's own signal handlers stay off.
- */
-export interface TuiHandle<T> {
-	/** Settles once the screen has closed and terminal restoration has been written. */
-	readonly closed: Promise<T>;
-	/** Closes the screen and restores the terminal. Safe to call more than once. */
-	destroy(): Promise<void>;
-	/** Hands the terminal back (Ctrl+Z). Await before stopping the process. */
-	suspend(): Promise<void>;
-	/** Takes the terminal again after SIGCONT and redraws. */
-	resume(): Promise<void>;
 }
 
 export interface SmokeOptions {
@@ -61,9 +41,9 @@ export function SmokeScreen(props: {
 
 	return (
 		<box flexDirection="column">
-			<text>pk {props.version} · tui smoke</text>
+			<text>pk {props.version} - tui smoke</text>
 			<text>
-				size {dims().width}x{dims().height} · resizes {resizes()}
+				size {dims().width}x{dims().height} - resizes {resizes()}
 			</text>
 		</box>
 	);
@@ -76,15 +56,10 @@ export function SmokeScreen(props: {
 export async function startSmokeScreen(
 	options: SmokeOptions,
 ): Promise<TuiHandle<SmokeResult>> {
-	const renderer: CliRenderer = await createCliRenderer({
-		exitOnCtrlC: false,
-		exitSignals: [],
-		targetFps: 30,
-	});
-
-	const result = { resizes: 0, width: renderer.width, height: renderer.height };
-	await render(
-		() => (
+	const result = { resizes: 0, width: 0, height: 0 };
+	let timer: ReturnType<typeof setTimeout> | undefined;
+	const { handle, renderer } = await openScreen(
+		() => () => (
 			<SmokeScreen
 				version={options.version}
 				onInterrupt={options.onInterrupt}
@@ -96,37 +71,12 @@ export async function startSmokeScreen(
 				}}
 			/>
 		),
-		renderer,
+		() => ({ ...result }),
+		{},
+		() => clearTimeout(timer),
 	);
-
-	let resolveClosed: (value: SmokeResult) => void = () => {};
-	const closed = new Promise<SmokeResult>((resolve) => {
-		resolveClosed = resolve;
-	});
-
-	// One finish path, whoever starts the close (the timer, cli, or OpenTUI itself).
-	let finishing: Promise<void> | undefined;
-	const finish = (): Promise<void> => {
-		clearTimeout(timer);
-		// `closed` rejects only when a slow terminal made the close run late. Restoration was still attempted.
-		finishing ??= renderer.closed
-			.catch(() => {})
-			.then(() => resolveClosed({ ...result }));
-		return finishing;
-	};
-	renderer.on("destroy", () => void finish());
-
-	const destroy = (): Promise<void> => {
-		renderer.destroy(); // idempotent
-		return finish();
-	};
-
-	const timer = setTimeout(() => void destroy(), options.durationMs);
-
-	return {
-		closed,
-		destroy,
-		suspend: () => renderer.suspend(),
-		resume: () => renderer.resume(),
-	};
+	result.width = renderer.width;
+	result.height = renderer.height;
+	timer = setTimeout(() => void handle.destroy(), options.durationMs);
+	return handle;
 }

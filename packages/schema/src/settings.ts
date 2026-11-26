@@ -94,6 +94,22 @@ export const Settings = z
 		limits: z
 			.strictObject({ maxTurns: z.number().int().positive().optional() })
 			.optional(),
+		ui: z
+			.strictObject({
+				background: z.enum(["pk", "terminal"]).optional().meta({
+					description:
+						'"pk" paints pk\'s near black canvas (the default); "terminal" keeps your terminal\'s own background.',
+				}),
+				ascii: z.boolean().optional().meta({
+					description:
+						"Draw with plain ASCII glyphs instead of Unicode. Default false; also on when the locale is not UTF-8.",
+				}),
+			})
+			.optional()
+			.meta({
+				description:
+					"How the full screen UI draws. Only read from your user settings file.",
+			}),
 	})
 	.readonly();
 /** pk's settings after parsing: every model reference is a `ModelRef`. */
@@ -106,6 +122,7 @@ export const USER_ONLY_SETTINGS: readonly string[] = [
 	"providers",
 	"permissions.mode",
 	"permissions.allow",
+	"ui",
 ];
 
 /** Deprecated settings paths mapped to their replacement. Empty today. */

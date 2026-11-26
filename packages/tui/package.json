@@ -9,6 +9,8 @@
 		"typecheck": "tsc --noEmit -p ."
 	},
 	"dependencies": {
+		"@pk/env": "workspace:*",
+		"@pk/schema": "workspace:*",
 		"@opentui/core": "0.9.7",
 		"@opentui/solid": "0.9.7",
 		"solid-js": "1.9.20"

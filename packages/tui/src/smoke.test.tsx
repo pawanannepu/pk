@@ -13,12 +13,12 @@ test("the smoke screen renders its title and size, and counts a resize", async (
 	try {
 		await setup.renderOnce();
 		const first = setup.captureCharFrame();
-		expect(first).toContain("pk 1.2.3 · tui smoke");
-		expect(first).toContain("size 60x6 · resizes 0");
+		expect(first).toContain("pk 1.2.3 - tui smoke");
+		expect(first).toContain("size 60x6 - resizes 0");
 
 		setup.resize(72, 8);
 		await setup.renderOnce();
-		expect(setup.captureCharFrame()).toContain("size 72x8 · resizes 1");
+		expect(setup.captureCharFrame()).toContain("size 72x8 - resizes 1");
 		expect(seen).toEqual([[72, 8]]);
 	} finally {
 		setup.renderer.destroy();

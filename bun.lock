@@ -55,6 +55,8 @@
       "dependencies": {
         "@opentui/core": "0.9.7",
         "@opentui/solid": "0.9.7",
+        "@pk/env": "workspace:*",
+        "@pk/schema": "workspace:*",
         "solid-js": "1.9.20",
       },
     },

@@ -4,13 +4,18 @@ import { unsupportedPlatformMessage } from "./platform-check.ts";
 import { main } from "./program.ts";
 import { pkVersion } from "./version.ts";
 
-function capture(isTTY = false) {
+function capture(
+	isTTY = false,
+	options: { stdinIsTTY?: boolean; env?: Record<string, string> } = {},
+) {
 	const out: string[] = [];
 	const err: string[] = [];
 	return {
 		io: {
+			stdin: { isTTY: options.stdinIsTTY ?? isTTY },
 			stdout: { isTTY, write: (text: string) => out.push(text) },
 			stderr: { write: (text: string) => err.push(text) },
+			env: options.env ?? { TERM: "xterm-256color" },
 		},
 		out: () => out.join(""),
 		err: () => err.join(""),
@@ -47,6 +52,51 @@ describe("pk cli", () => {
 		const c = capture();
 		expect(await main(argv("--nope"), c.io)).toBe(EXIT.usage);
 		expect(c.err()).toContain("unknown option");
+	});
+
+	test("bare pk in a terminal says interactive mode is not built yet", async () => {
+		const c = capture(true);
+		expect(await main(argv(), c.io)).toBe(EXIT.success);
+		expect(c.err()).toContain("interactive mode is not built yet");
+	});
+
+	test("bare pk refuses without a terminal, with a pk -p hint (spec 0003 AC-20)", async () => {
+		const cases = [
+			capture(false),
+			capture(true, { stdinIsTTY: false }),
+			capture(true, { env: { TERM: "dumb" } }),
+		];
+		for (const c of cases) {
+			expect(await main(argv(), c.io)).toBe(EXIT.usage);
+			expect(c.err()).toBe(
+				'pk: interactive mode needs a terminal.\nFor scripts and pipes use: pk -p "<prompt>"\n',
+			);
+			expect(c.out()).toBe("");
+		}
+	});
+
+	test("__tui-demo refuses without a terminal before loading the UI (spec 0003 AC-20)", async () => {
+		for (const c of [
+			capture(false),
+			capture(true, { env: { TERM: "dumb" } }),
+		]) {
+			expect(await main(argv("__tui-demo"), c.io)).toBe(EXIT.usage);
+			expect(c.err()).toContain("interactive mode needs a terminal.");
+			expect(c.err()).toContain('pk -p "<prompt>"');
+		}
+	});
+
+	test("__tui-demo rejects a bad speed as a usage error", async () => {
+		const c = capture(true);
+		expect(await main(argv("__tui-demo", "--speed", "0"), c.io)).toBe(
+			EXIT.usage,
+		);
+	});
+
+	test("--help hides the demo command", async () => {
+		const c = capture();
+		await main(argv("--help"), c.io);
+		expect(c.out()).not.toContain("__tui-demo");
 	});
 
 	test("__tui-smoke refuses to run without a terminal", async () => {

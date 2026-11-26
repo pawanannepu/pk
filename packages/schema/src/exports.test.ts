@@ -110,6 +110,8 @@ describe("public surface (AC-1)", () => {
 			"CostRecord",
 			"HistoryEntry",
 			"Settings",
+			"FileTouch",
+			"ToolDisplayDetails",
 		];
 		const exported = new Set(exportedSchemas.map(([name]) => name));
 		expect(names.filter((n) => !exported.has(n))).toEqual([]);
@@ -129,6 +131,7 @@ describe("public surface (AC-1)", () => {
 			"records",
 			"settings",
 			"json-schema",
+			"display",
 		];
 		const undocumented = files.flatMap((file) => {
 			const lines = readFileSync(join(dir, `${file}.ts`), "utf8").split("\n");
