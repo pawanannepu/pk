@@ -1,8 +1,26 @@
 /**
- * @pk/provider-openai: The OpenAI compatible adapter (any OpenAI style endpoint by base URL).
+ * @pk/provider-openai: the OpenAI compatible chat adapter. One code path for any server that speaks
+ * the chat completions format (OpenAI, OpenRouter, Groq, Ollama, LM Studio), chosen by base URL, key
+ * and model. Spec: docs/specs/0004-provider-layer-openai-adapter.
  *
- * Stub created by the scaffold (#1, spec 0001). The adapter arrives with #5.
- * See docs/specs/0001-stack-architecture/index.md, "Module map", for what this
- * package may depend on.
+ * The only package that imports `openai`. No vendor type crosses its exports.
  */
-export {};
+
+/** The adapter factory, its config, and the `fetch` shape tests inject. */
+export {
+	createOpenAIProvider,
+	type FetchLike,
+	type OpenAIProviderConfig,
+} from "./adapter.ts";
+/** Maps any call failure to a `ProviderError`, per the spec's *Error mapping* table. */
+export { type ErrorContext, toProviderError } from "./errors.ts";
+/** Builds the chat request body from a pk `ModelRequest` (pure). */
+export { type ChatRequest, toChatRequest } from "./request.ts";
+/** The pure stream mapper: chunk by chunk, then once at the end. */
+export {
+	finish,
+	INITIAL_STATE,
+	type MapperState,
+	mapChunk,
+	type StreamFailure,
+} from "./stream-map.ts";

@@ -193,6 +193,32 @@ describe("checkStreamOrder (AC-7)", () => {
 		]);
 	});
 
+	test("an aborted stop allows an unfinished call; any other stop still reports it", () => {
+		// covers: spec 0004 AC-5 (the amended spec 0002 AC-7)
+		const open: ProviderStreamEvent[] = [
+			{ type: "tool_call_start", callId: a, name: "read_file" },
+			{ type: "tool_call_delta", callId: a, argsText: '{"pa' },
+		];
+		expect(
+			checkStreamOrder([...open, { type: "stop", reason: "aborted" }]),
+		).toEqual([]);
+		expect(
+			checkStreamOrder([...open, { type: "stop", reason: "end_turn" }]).map(
+				(i) => i.code,
+			),
+		).toEqual(["unfinished_call"]);
+	});
+
+	test("after an aborted stop, late call events are still after_stop", () => {
+		// covers: spec 0004 AC-5
+		const events: ProviderStreamEvent[] = [
+			{ type: "tool_call_start", callId: a, name: "read_file" },
+			{ type: "stop", reason: "aborted" },
+			{ type: "tool_call_end", callId: a, input: {} },
+		];
+		expect(checkStreamOrder(events).map((i) => i.code)).toEqual(["after_stop"]);
+	});
+
 	test("a delta after its call ended is after_call_end, not unknown_call", () => {
 		// covers: AC-7
 		const events: ProviderStreamEvent[] = [

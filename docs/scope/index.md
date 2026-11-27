@@ -17,7 +17,7 @@ _These are recommendations to keep your build orderly, not requirements. Skip an
 | 2 | Coding standards & tooling | Foundation | done | [foundations](foundations.md) |
 | 3 | Core data model | Foundation | done | [foundations](foundations.md) |
 | 4 | Terminal UI foundation | Foundation | in-progress | [foundations](foundations.md) |
-| 5 | Provider layer & OpenAI compatible adapter | Slice 1 | planned | [providers](providers.md) |
+| 5 | Provider layer & OpenAI compatible adapter | Slice 1 | done | [providers](providers.md) |
 | 6 | Agent loop & read file tool | Slice 1 | planned | [agent](agent.md) |
 | 7 | Permission prompts & modes | Slice 2 | planned | [safety](safety.md) |
 | 8 | File write & exact edit tools with diffs | Slice 2 | planned | [tools](tools.md) |
@@ -75,7 +75,7 @@ Deferred (no slice yet): Windows support, screen reader mode, Linux musl support
 ## Epics
 
 - [foundations](foundations.md): 2 done, 2 in progress. Stack, standards, data model, terminal UI foundation.
-- [providers](providers.md): 8 planned. The provider layer, adapters, login, catalog, model roles, costs, subscription sign in.
+- [providers](providers.md): 1 done, 7 planned. The provider layer, adapters, login, catalog, model roles, costs, subscription sign in.
 - [agent](agent.md): 7 planned. The loop, context, system prompt, sessions, compaction, hooks, subagents.
 - [tools](tools.md): 6 planned. File, shell, search, to do, MCP and web tools.
 - [safety](safety.md): 4 planned. Permission prompts, rules, sandbox, undo.

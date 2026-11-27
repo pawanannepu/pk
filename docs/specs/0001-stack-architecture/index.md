@@ -63,7 +63,7 @@ Each module is a workspace package `@pk/<name>`, private (users get the binary, 
 | `schema` | Zod schemas and types shared by everything: messages, content blocks, tool definitions, calls and results, usage, session records, settings, and the `AgentEvent` union (exact shapes: #3) | `zod` | #1 (stub) |
 | `env` | `paths()`, settings load and merge, `atomicWriteFile`, `appendJsonl`, `redact()`, the logger, `PkError` | `schema` | #1 |
 | `provider` | Provider interface, provider errors, the retry and backoff policy, the scripted fake provider | `schema`, `env` | #1 (stub) |
-| `provider-openai` | OpenAI compatible adapter (#5) | `provider`, `schema`, `env`, `openai` | #1 (stub) |
+| `provider-openai` | OpenAI compatible adapter (#5) | `provider`, `schema`, `env`, `openai`, `zod` (chunk schemas, [spec 0004](../0004-provider-layer-openai-adapter/index.md)) | #1 (stub) |
 | `provider-anthropic` | Anthropic native adapter (#20) | `provider`, `schema`, `env`, `@anthropic-ai/sdk` | #20 |
 | `permissions` | Modes, allow and deny rules, the always ask list, a pure decision function (#7, #10) | `schema`, `env` | #1 (stub) |
 | `tools` | The `Tool` interface (definition plus executor) and the built in tools (#6, #8, #9, #11, #12). Tools never ask for permission themselves | `schema`, `env` | #1 (stub) |

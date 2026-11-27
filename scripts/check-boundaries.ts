@@ -30,7 +30,7 @@ const RULES: Record<string, Rule> = {
 	provider: { pk: ["schema", "env"], external: [], core: true },
 	"provider-openai": {
 		pk: ["provider", "schema", "env"],
-		external: ["openai"],
+		external: ["openai", "zod"], // zod for chunk schemas (spec 0004)
 		core: true,
 	},
 	"provider-anthropic": {

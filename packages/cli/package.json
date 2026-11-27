@@ -10,6 +10,9 @@
 	},
 	"dependencies": {
 		"@pk/env": "workspace:*",
+		"@pk/provider": "workspace:*",
+		"@pk/provider-openai": "workspace:*",
+		"@pk/schema": "workspace:*",
 		"@pk/tui": "workspace:*",
 		"commander": "15.1.0"
 	}

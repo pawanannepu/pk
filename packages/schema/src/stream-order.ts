@@ -24,6 +24,9 @@ export interface StreamIssue {
  * Checks a provider stream against its ordering rules, for adapter and fake provider tests. Reports a
  * missing, repeated or not last `stop`; a call delta or end with no earlier start, or after its end; a
  * call that starts twice; a started call with no end before `stop`; and more than one `usage`.
+ *
+ * A started call with no end is allowed when the stream's stop has reason `aborted` (spec 0004 AC-5):
+ * after an abort, unfinished calls are dropped. A stream with no `stop` still reports them.
  */
 export function checkStreamOrder(
 	events: readonly ProviderStreamEvent[],
@@ -51,7 +54,7 @@ export function checkStreamOrder(
 		if (event.type === "stop") {
 			if (stopIndex === undefined) {
 				stopIndex = index;
-				unfinished(index);
+				if (event.reason !== "aborted") unfinished(index);
 			} else {
 				issues.push({
 					code: "multiple_stop",

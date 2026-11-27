@@ -7,5 +7,12 @@
 	},
 	"scripts": {
 		"typecheck": "tsc --noEmit -p ."
+	},
+	"dependencies": {
+		"@pk/env": "workspace:*",
+		"@pk/provider": "workspace:*",
+		"@pk/schema": "workspace:*",
+		"openai": "7.56.0",
+		"zod": "4.6.7"
 	}
 }

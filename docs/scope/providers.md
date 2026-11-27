@@ -4,10 +4,20 @@ The one shared provider layer, so the agent loop and tools never depend on a par
 
 ## Slice 1: First working conversation
 
-### 5. Provider layer & OpenAI compatible adapter · needs a decision
+### 5. Provider layer & OpenAI compatible adapter · done
 The provider interface (streaming, tool calls, usage, errors, retries) and its first adapter for the OpenAI compatible format, configurable by base URL and an API key from an environment variable. Also a scripted fake provider so the loop and tools can be tested offline.
 **Done when:** the same code path talks to OpenAI, OpenRouter, Groq or a local Ollama by changing only base URL, key and model; rate limits and network errors surface as clear messages, not crashes; tests run against the scripted provider with no network. (basis: the OpenAI compatible format is the widest reaching single adapter)
-- [ ] Design it (spec): `/architect provider layer & OpenAI compatible adapter`
+spec [0004](../specs/0004-provider-layer-openai-adapter/index.md) · code in [packages/provider/](../../packages/provider/), [packages/provider-openai/](../../packages/provider-openai/), [packages/cli/src/providers.ts](../../packages/cli/src/providers.ts)
+- [x] Design it (spec): `/architect provider layer & OpenAI compatible adapter`
+- [x] Build it: `/develop provider layer & OpenAI compatible adapter`
+  - [x] Tracer thread: error codes and fake script schemas, the aborted stream amendment, the provider interface and fake provider, a text only adapter over a fixture, the `cli` registry and `PK_FAKE_SCRIPT` (AC-1, AC-5, AC-9, AC-10, AC-13)
+  - [x] Tool calls and full translation: request mapping, stream mapping, tool call grouping, usage and cost, stop reasons (AC-3, AC-4)
+  - [x] Failure, retry and abort: error mapping, abort, `withRetry`, `withTimeouts`, logging (AC-5, AC-6, AC-7, AC-8, AC-9, AC-12)
+  - [x] Compatible servers and live smoke: OpenRouter, Ollama and Groq fixtures, the opt in live test, `bun run check` green (AC-2, AC-11, AC-13)
+- [x] Verify it: `/check verify provider layer & OpenAI compatible adapter`
+- [x] Test it: `/test provider layer & OpenAI compatible adapter`
+- [x] Review it (fresh model): `/check review provider layer & OpenAI compatible adapter`
+- [x] Document it: `/document provider layer & OpenAI compatible adapter`
 
 ## Slice 6: Providers and accounts
 

@@ -315,3 +315,42 @@ describe("check-boundaries: package manifests", () => {
 		expect(result.out.match(/does not declare it/g)?.length).toBe(1);
 	});
 });
+
+describe("check-boundaries: the OpenAI SDK (spec 0004 AC-13)", () => {
+	const openaiAdapter: Files = {
+		"packages/provider/package.json": manifest("provider", {
+			"@pk/schema": "workspace:*",
+			"@pk/env": "workspace:*",
+		}),
+		"packages/provider/src/index.ts": "export const p = 1;\n",
+		"packages/provider-openai/package.json": manifest("provider-openai", {
+			"@pk/provider": "workspace:*",
+			openai: "7.56.0",
+			zod: "4.6.7",
+		}),
+		"packages/provider-openai/src/index.ts":
+			'import OpenAI from "openai";\nimport { z } from "zod";\nimport { p } from "@pk/provider";\nexport const all = [OpenAI, z, p];\n',
+	};
+
+	test("provider-openai may import openai and zod", () => {
+		const result = run(openaiAdapter);
+
+		expect(result.code).toBe(0);
+	});
+
+	test("openai in any other package fails, even when declared", () => {
+		const result = run({
+			...openaiAdapter,
+			"packages/provider/package.json": manifest("provider", {
+				"@pk/schema": "workspace:*",
+				"@pk/env": "workspace:*",
+				openai: "7.56.0",
+			}),
+			"packages/provider/src/index.ts":
+				'import OpenAI from "openai";\nexport const p = OpenAI;\n',
+		});
+
+		expect(result.code).toBe(1);
+		expect(result.out).toContain("@pk/provider may not depend on openai");
+	});
+});

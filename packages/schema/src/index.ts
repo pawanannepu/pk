@@ -36,6 +36,12 @@ export {
 	TurnEndReason,
 	TurnError,
 } from "./events.ts";
+export {
+	FakeError,
+	FakeScript,
+	FakeStep,
+	ProviderErrorCode,
+} from "./fake-script.ts";
 export { jsonSchemaOf, toolInputJsonSchema } from "./json-schema.ts";
 export {
 	AgentId,
