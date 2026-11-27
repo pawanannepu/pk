@@ -4,10 +4,21 @@ The agent loop and everything that shapes what the model knows and how it behave
 
 ## Slice 1: First working conversation
 
-### 6. Agent loop & read file tool · needs a decision
+### 6. Agent loop & read file tool · in-progress
 The loop: send the conversation, run the tool calls the model makes, feed results back, repeat until the task is done, the user interrupts, or the turn limit is reached. First tool: read a file with line numbers. A minimal placeholder system prompt until #17.
 **Done when:** you run `pk`, ask about a file, the model reads it through a real tool call and the answer streams back; a failing tool call goes back to the model as an error and the session continues; the turn limit stops a runaway loop with a clear message. This is the walking skeleton. (basis: tracer bullet, the first slice touches every layer)
-- [ ] Design it (spec): `/architect agent loop & read file tool`
+spec [0005](../specs/0005-agent-loop-read-file/index.md)
+code in `packages/agent/src/`, `packages/tools/src/`, `packages/permissions/src/`, `packages/cli/src/session-setup.ts`
+- [x] Design it (spec): `/architect agent loop & read file tool`
+- [x] Build it: `/develop agent loop & read file tool`
+  - [x] The thread runs end to end: tool interface, thin read_file, permission seam, session, `pk` wired to the screen, PTY e2e (AC-1, AC-2, AC-10, AC-15, AC-16)
+  - [x] The loop handles every outcome: turn limit, usage and retries, error results, stop reasons, provider and internal errors (AC-3, AC-4, AC-7, AC-8, AC-9)
+  - [x] Control: queue, interrupt and its races, close, the permission ask path (AC-5, AC-6, AC-10)
+  - [x] read_file complete: path scope, windowing and caps, errors, ledger (AC-11, AC-12, AC-13, AC-14)
+- [x] Verify it: `/check verify agent loop & read file tool`
+- [x] Test it: `/test agent loop & read file tool`
+- [x] Review it (fresh model): `/check review agent loop & read file tool`
+- [x] Document it: `/document agent loop & read file tool`
 
 ## Slice 5: Project awareness and behavior
 

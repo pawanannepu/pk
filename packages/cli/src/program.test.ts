@@ -54,10 +54,23 @@ describe("pk cli", () => {
 		expect(c.err()).toContain("unknown option");
 	});
 
-	test("bare pk in a terminal says interactive mode is not built yet", async () => {
+	test("bare pk with a fake script that cannot be read exits 1 before the screen (spec 0005 AC-16)", async () => {
+		const c = capture(true, {
+			env: {
+				TERM: "xterm-256color",
+				PK_FAKE_SCRIPT: "/nonexistent/pk-fake-script.json",
+			},
+		});
+		expect(await main(argv(), c.io)).toBe(EXIT.failure);
+		expect(c.err()).toStartWith(
+			"pk: Could not read the fake script /nonexistent/pk-fake-script.json",
+		);
+	});
+
+	test("bare pk with no model set exits 1 naming the settings file (spec 0005 AC-16)", async () => {
 		const c = capture(true);
-		expect(await main(argv(), c.io)).toBe(EXIT.success);
-		expect(c.err()).toContain("interactive mode is not built yet");
+		expect(await main(argv(), c.io)).toBe(EXIT.failure);
+		expect(c.err()).toStartWith("pk: No model set.");
 	});
 
 	test("bare pk refuses without a terminal, with a pk -p hint (spec 0003 AC-20)", async () => {

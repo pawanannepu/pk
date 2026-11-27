@@ -1,7 +1,8 @@
 import { spawnSync } from "node:child_process";
-import { existsSync } from "node:fs";
+import { existsSync, realpathSync } from "node:fs";
 import { homedir } from "node:os";
 import { join } from "node:path";
+import type { AgentSession } from "@pk/agent";
 import {
 	createLogger,
 	findProjectRoot,
@@ -11,7 +12,8 @@ import {
 	paths,
 	readSettingsFile,
 } from "@pk/env";
-import type { TuiEnv, TuiHandle } from "@pk/tui";
+import type { Settings } from "@pk/schema";
+import type { TuiEnv, TuiHandle, TuiUiSettings } from "@pk/tui";
 import { Command, CommanderError, Option } from "commander";
 import { EXIT } from "./exit-codes.ts";
 import {
@@ -24,6 +26,7 @@ import {
 } from "./native-home.ts";
 import { unsupportedPlatformMessage } from "./platform-check.ts";
 import { createProcessGuard } from "./process-guard.ts";
+import { closeWithin, prepareSession } from "./session-setup.ts";
 import { interactiveRefusal } from "./terminal-check.ts";
 import { type RunCommand, readTmuxPassthrough } from "./tmux-check.ts";
 import { pkVersion } from "./version.ts";
@@ -156,17 +159,57 @@ export async function main(
 			writeOut: (text) => io.stdout.write(text),
 			writeErr: (text) => io.stderr.write(text),
 		})
-		.action(() => {
-			const refusal = refuseWithoutTerminal(io);
-			if (refusal) {
+		.action(async () => {
+			// spec 0005 AC-16, step 1: before the native library exec and before @pk/tui is imported.
+			if (refuseWithoutTerminal(io)) {
 				exitCode = EXIT.usage;
 				return;
 			}
-			// Interactive mode arrives with #6 (agent loop) on top of the #4 UI foundation.
-			io.stderr.write(
-				"pk: interactive mode is not built yet. See `pk --help`.\n",
-			);
-			program.outputHelp({ error: true });
+			const flags = program.opts<{ projectSettings?: boolean }>();
+			let session: AgentSession | undefined;
+			const ran = await runScreen("tui", async (tui, hooks, log) => {
+				const home = homedir();
+				const projectRoot = realpathSync(
+					findProjectRoot(process.cwd(), home, existsSync),
+				);
+				// Steps 2 to 6 run before the screen opens; a ProviderError prints `pk: <message>`, exit 1.
+				const settings = await loadScreenSettings(
+					projectRoot,
+					home,
+					flags.projectSettings === false,
+					log,
+				);
+				const prepared = await prepareSession({
+					settings,
+					projectRoot,
+					getEnv: (name) => io.env[name],
+					userSettingsPath: userSettingsPath(),
+					logger: log,
+				});
+				const live = prepared.session;
+				session = live;
+				return tui.startTui({
+					session: live,
+					info: {
+						version: pkVersion(),
+						projectRoot,
+						home,
+						model: prepared.model,
+						// decide() ignores modes until #7.
+						mode: "normal",
+					},
+					ui: uiSettings(settings),
+					env: terminalEnv(io.env),
+					...tmuxPassthroughOption(io.env.TMUX),
+					clock: tui.systemClock(),
+					logger: log,
+					onQuit: () => void closeWithin(live).then(hooks.onQuit),
+					onSuspend: hooks.onSuspend,
+				});
+			});
+			// The screen closed on its own (session_ended): close the session and exit 0.
+			if (session !== undefined) await closeWithin(session);
+			if (ran) log().info("tui done", { reason: ran.result.reason });
 		});
 
 	program
@@ -233,20 +276,12 @@ export async function main(
 			const ran = await runScreen("tui demo", async (tui, hooks, log) => {
 				const home = homedir();
 				const projectRoot = findProjectRoot(process.cwd(), home, existsSync);
-				const loaded = await loadSettings({
-					userFile: join(paths().config, "settings.json"),
+				const settings = await loadScreenSettings(
 					projectRoot,
 					home,
-					flags: {},
-					skipProject: flags.projectSettings === false,
-					readFile: readSettingsFile,
-				});
-				for (const warning of loaded.warnings) {
-					log.warn("settings warning", {
-						code: warning.code,
-						message: warning.message,
-					});
-				}
+					flags.projectSettings === false,
+					log,
+				);
 				const clock = tui.systemClock();
 				const handle = await tui.startTui({
 					session: tui.createScriptedSession(tui.DEMO_SCRIPT, {
@@ -261,10 +296,7 @@ export async function main(
 						mode: "normal",
 						contextWindow: 200_000,
 					},
-					ui: {
-						background: loaded.settings.ui?.background ?? "pk",
-						ascii: loaded.settings.ui?.ascii ?? false,
-					},
+					ui: uiSettings(settings),
 					env: terminalEnv(io.env),
 					...tmuxPassthroughOption(io.env.TMUX),
 					clock,
@@ -303,6 +335,43 @@ function refuseWithoutTerminal(io: Io): boolean {
 	if (refusal === undefined) return false;
 	io.stderr.write(refusal);
 	return true;
+}
+
+/** The user settings file, named in setup error messages. */
+function userSettingsPath(): string {
+	return join(paths().config, "settings.json");
+}
+
+/** Loads merged settings for a screen and logs their warnings. */
+async function loadScreenSettings(
+	projectRoot: string,
+	home: string,
+	skipProject: boolean,
+	log: Logger,
+): Promise<Settings> {
+	const loaded = await loadSettings({
+		userFile: userSettingsPath(),
+		projectRoot,
+		home,
+		flags: {},
+		skipProject,
+		readFile: readSettingsFile,
+	});
+	for (const warning of loaded.warnings) {
+		log.warn("settings warning", {
+			code: warning.code,
+			message: warning.message,
+		});
+	}
+	return loaded.settings;
+}
+
+/** The user only `ui` settings, with defaults applied. */
+function uiSettings(settings: Settings): TuiUiSettings {
+	return {
+		background: settings.ui?.background ?? "pk",
+		ascii: settings.ui?.ascii ?? false,
+	};
 }
 
 /** Built on demand, never at module load: module level code in cli stays free of side effects. */

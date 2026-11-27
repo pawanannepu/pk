@@ -39,7 +39,7 @@ const RULES: Record<string, Rule> = {
 		core: true,
 	},
 	permissions: { pk: ["schema", "env"], external: [], core: true },
-	tools: { pk: ["schema", "env"], external: [], core: true },
+	tools: { pk: ["schema", "env"], external: ["zod"], core: true }, // zod for tool input schemas (spec 0005)
 	agent: {
 		pk: ["schema", "env", "provider", "permissions", "tools"],
 		external: [],

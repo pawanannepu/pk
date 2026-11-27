@@ -31,6 +31,7 @@ export {
 	AgentEvent,
 	type AgentEventOf,
 	type AgentEventType,
+	DENIED_TEXT,
 	PermissionAnswer,
 	TodoItem,
 	TurnEndReason,

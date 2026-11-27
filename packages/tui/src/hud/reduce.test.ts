@@ -456,6 +456,17 @@ describe("counts, files and usage (spec 0003 AC-8, AC-10)", () => {
 		expect(s.errors).toBe(0);
 	});
 
+	test("a denial with a note still shows as denied (spec 0005 AC-10)", () => {
+		const s = run([
+			toolResult(demoId("call", 42), {
+				isError: true,
+				text: "denied by user (note: use the test fixture instead)",
+			}),
+		]);
+		expect(s.tools[demoId("call", 42)]).toMatchObject({ denied: true });
+		expect(s.errors).toBe(0);
+	});
+
 	test("later touches of the same file add up, keep its first place, and read sticks", () => {
 		const s = run([
 			toolResult(demoId("call", 50), {

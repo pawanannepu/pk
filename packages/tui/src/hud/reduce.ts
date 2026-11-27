@@ -2,6 +2,7 @@ import { redact } from "@pk/env";
 import {
 	type AgentEventOf,
 	type CallId,
+	DENIED_TEXT,
 	type JsonObject,
 	MAIN_AGENT_ID,
 	type MessageId,
@@ -9,7 +10,7 @@ import {
 	ToolDisplayDetails,
 } from "@pk/schema";
 import { ERROR_HINTS } from "../error-hints.ts";
-import { DENIED_TEXT, SPARK_CALLS } from "../hud-constants.ts";
+import { SPARK_CALLS } from "../hud-constants.ts";
 import { toolTarget } from "../text.ts";
 import type {
 	FileView,
@@ -182,7 +183,7 @@ function onToolResult(
 		block.type === "text" ? [block.text] : [],
 	);
 	const firstText = texts[0] ?? "";
-	const denied = result.isError && firstText === DENIED_TEXT;
+	const denied = result.isError && firstText.startsWith(DENIED_TEXT);
 	const parsed = ToolDisplayDetails.safeParse(result.details);
 	const display = parsed.success ? parsed.data : undefined;
 	const next: ToolView = {

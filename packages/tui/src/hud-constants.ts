@@ -13,9 +13,6 @@ export const FLUSH_INTERVAL_MS = 33;
 /** How many recent calls the TOKENS sparkline shows. */
 export const SPARK_CALLS = 14;
 
-/** The text a denied call's result carries (the loop's wording, #7). Denials stay out of the error count. */
-export const DENIED_TEXT = "denied by user";
-
 /** Diffs under a tool line keep at most this many patch lines. Expand is #14. */
 export const DIFF_MAX_LINES = 40;
 

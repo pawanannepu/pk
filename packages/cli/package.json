@@ -9,10 +9,12 @@
 		"typecheck": "tsc --noEmit -p ."
 	},
 	"dependencies": {
+		"@pk/agent": "workspace:*",
 		"@pk/env": "workspace:*",
 		"@pk/provider": "workspace:*",
 		"@pk/provider-openai": "workspace:*",
 		"@pk/schema": "workspace:*",
+		"@pk/tools": "workspace:*",
 		"@pk/tui": "workspace:*",
 		"commander": "15.1.0"
 	}

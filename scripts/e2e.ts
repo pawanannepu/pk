@@ -375,6 +375,91 @@ try {
 		);
 	}
 
+	// spec 0005 AC-1 and AC-16: real `pk` on a real session. The fake provider asks for read_file on
+	// a fixture, the loop runs it, and the answer streams back; Ctrl+C then exits 130, restored.
+	{
+		const project = join(scratch, "agent-project");
+		await mkdir(join(project, ".git"), { recursive: true });
+		await Bun.write(join(project, "hello.txt"), "pk e2e fixture\n");
+		const callId = "call_01JDX8Z3QK5V7W9Y0A2B4C6D01";
+		const usage = {
+			type: "usage",
+			usage: {
+				inputTokens: 10,
+				cacheReadTokens: 0,
+				cacheWriteTokens: 0,
+				outputTokens: 5,
+			},
+		};
+		const scriptPath = join(scratch, "agent-script.json");
+		await Bun.write(
+			scriptPath,
+			JSON.stringify({
+				v: 1,
+				steps: [
+					{
+						events: [
+							{ type: "tool_call_start", callId, name: "read_file" },
+							{
+								type: "tool_call_end",
+								callId,
+								input: { path: "hello.txt" },
+							},
+							usage,
+							{ type: "stop", reason: "tool_use" },
+						],
+					},
+					{
+						events: [
+							{ type: "text_delta", text: "FIXTURE-ANSWER-OK" },
+							usage,
+							{ type: "stop", reason: "end_turn" },
+						],
+					},
+				],
+			}),
+		);
+		const chunks: Uint8Array[] = [];
+		const proc = Bun.spawn([binary], {
+			cwd: project,
+			env: { ...demoBase, PK_FAKE_SCRIPT: scriptPath },
+			terminal: { cols: 140, rows: 40, data: (_t, data) => chunks.push(data) },
+		});
+		const killer = setTimeout(() => proc.kill("SIGKILL"), 30_000);
+		const output = () => Buffer.concat(chunks).toString("utf8");
+		const waitFor = async (needle: string, timeoutMs = 8_000) => {
+			const until = Date.now() + timeoutMs;
+			while (Date.now() < until) {
+				if (output().includes(needle)) return true;
+				await Bun.sleep(50);
+			}
+			return false;
+		};
+		const up = await waitFor("ask pk anything");
+		proc.terminal?.write("what is in hello.txt?\r");
+		const answered = await waitFor("FIXTURE-ANSWER-OK");
+		const touched = output().includes("hello.txt");
+		await Bun.sleep(300);
+		proc.terminal?.write("\x03");
+		const exitCode = await proc.exited;
+		clearTimeout(killer);
+		await Bun.sleep(100);
+		proc.terminal?.close();
+		const out = output();
+		check(
+			up && answered && touched,
+			"pk: the model reads a fixture through read_file and the answer streams back",
+			`screen up ${up}, answered ${answered}, hello.txt shown ${touched}, tail ${JSON.stringify(out.slice(-300))}`,
+		);
+		check(
+			exitCode === 130 &&
+				out.lastIndexOf("\x1b[?1049l") > out.lastIndexOf("\x1b[?1049h") &&
+				out.lastIndexOf("\x1b[?25h") > out.lastIndexOf("\x1b[?25l"),
+			"pk: Ctrl+C closes the session and exits 130 with the terminal restored",
+			`exit ${exitCode}, tail ${JSON.stringify(out.slice(-300))}`,
+		);
+	}
+
 	// spec 0003 AC-3 and AC-4: the color codes the binary actually writes, per color depth.
 	{
 		/** Every SGR sequence in the output, split into its parameters. */

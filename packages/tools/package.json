@@ -7,5 +7,10 @@
 	},
 	"scripts": {
 		"typecheck": "tsc --noEmit -p ."
+	},
+	"dependencies": {
+		"@pk/env": "workspace:*",
+		"@pk/schema": "workspace:*",
+		"zod": "4.6.7"
 	}
 }

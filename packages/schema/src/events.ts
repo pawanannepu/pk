@@ -38,6 +38,12 @@ export const PermissionAnswer = z.discriminatedUnion("decision", [
 /** Your answer to a permission request. */
 export type PermissionAnswer = z.infer<typeof PermissionAnswer>;
 
+/**
+ * The text a denied call's result starts with. The loop adds ` (note: <note>)` when your answer has
+ * one, so the screen matches denials with `startsWith(DENIED_TEXT)` and keeps them out of the error count.
+ */
+export const DENIED_TEXT = "denied by user";
+
 /** How a turn ended. */
 export const TurnEndReason = z.enum([
 	"done",

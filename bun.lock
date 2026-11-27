@@ -14,14 +14,23 @@
     },
     "packages/agent": {
       "name": "@pk/agent",
+      "dependencies": {
+        "@pk/env": "workspace:*",
+        "@pk/permissions": "workspace:*",
+        "@pk/provider": "workspace:*",
+        "@pk/schema": "workspace:*",
+        "@pk/tools": "workspace:*",
+      },
     },
     "packages/cli": {
       "name": "@pk/cli",
       "dependencies": {
+        "@pk/agent": "workspace:*",
         "@pk/env": "workspace:*",
         "@pk/provider": "workspace:*",
         "@pk/provider-openai": "workspace:*",
         "@pk/schema": "workspace:*",
+        "@pk/tools": "workspace:*",
         "@pk/tui": "workspace:*",
         "commander": "15.1.0",
       },
@@ -37,6 +46,9 @@
     },
     "packages/permissions": {
       "name": "@pk/permissions",
+      "dependencies": {
+        "@pk/schema": "workspace:*",
+      },
     },
     "packages/provider": {
       "name": "@pk/provider",
@@ -63,6 +75,11 @@
     },
     "packages/tools": {
       "name": "@pk/tools",
+      "dependencies": {
+        "@pk/env": "workspace:*",
+        "@pk/schema": "workspace:*",
+        "zod": "4.6.7",
+      },
     },
     "packages/tui": {
       "name": "@pk/tui",

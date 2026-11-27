@@ -1,8 +1,14 @@
 /**
  * @pk/permissions: Permission modes, allow and deny rules, the always ask list, and a pure decision function.
  *
- * Stub created by the scaffold (#1, spec 0001). Modes and rules arrive with #7 and #10.
- * See docs/specs/0001-stack-architecture/index.md, "Module map", for what this
- * package may depend on.
+ * #6 (spec 0005) ships the seam: `decide` allows `read` kind tools and tools allowed for the session,
+ * and asks for everything else. Modes and rules arrive with #7 and #10.
  */
-export {};
+
+/** The pure decision the loop calls before every tool run, and its request, state and result types. */
+export {
+	decide,
+	type PermissionDecision,
+	type PermissionRequest,
+	type PermissionState,
+} from "./decide.ts";
