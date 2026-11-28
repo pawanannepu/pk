@@ -132,7 +132,7 @@ export function LeftRail(props: { height: number }) {
 								</Words>
 							</Row>
 							<Row>
-								<Words tone="textDim">{info.mode}</Words>
+								<Words tone="textDim">{state().mode}</Words>
 							</Row>
 							<Row>
 								<Words tone="textDim">

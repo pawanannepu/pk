@@ -5,6 +5,7 @@ import {
 	type AgentEvent,
 	MAIN_AGENT_ID,
 	type PermissionAnswer,
+	type PermissionMode,
 	type RequestId,
 } from "@pk/schema";
 import { DEMO_SCRIPT, type DemoEvent, type DemoTurn } from "./demo/script.ts";
@@ -31,12 +32,16 @@ export interface MountOptions {
 	readonly hints?: readonly string[];
 	readonly contextWindow?: number;
 	readonly kittyKeyboard?: boolean;
+	/** The start mode. Default `normal`. */
+	readonly mode?: PermissionMode;
+	readonly skipAllAvailable?: boolean;
 }
 
-/** A session wrapper that records every `submit` and `respond`. */
+/** A session wrapper that records every `submit`, `respond` and `setMode`. */
 export interface Recorded {
 	readonly submits: string[];
 	readonly responses: Array<[RequestId, PermissionAnswer]>;
+	readonly modes: PermissionMode[];
 }
 
 /**
@@ -46,10 +51,17 @@ export interface Recorded {
 export async function mountTui(options: MountOptions = {}) {
 	const clock = new ManualClock();
 	clock.setTime(Date.parse("2026-11-22T10:00:00.000Z"));
+	const mode = options.mode ?? "normal";
+	const skipAllAvailable = options.skipAllAvailable ?? false;
 	const inner =
 		options.session ??
-		createScriptedSession(options.script ?? DEMO_SCRIPT, { clock, speed: 1 });
-	const recorded: Recorded = { submits: [], responses: [] };
+		createScriptedSession(options.script ?? DEMO_SCRIPT, {
+			clock,
+			speed: 1,
+			mode,
+			skipAllAvailable,
+		});
+	const recorded: Recorded = { submits: [], responses: [], modes: [] };
 	const session: TuiSession = {
 		events: inner.events,
 		submit: (text) => {
@@ -61,6 +73,13 @@ export async function mountTui(options: MountOptions = {}) {
 			inner.respond(id, answer);
 		},
 		interrupt: () => inner.interrupt(),
+		setMode: (next) => {
+			recorded.modes.push(next);
+			inner.setMode(next);
+		},
+		get mode() {
+			return inner.mode;
+		},
 	};
 	const quits: string[] = [];
 	const tuiOptions: TuiOptions = {
@@ -70,7 +89,8 @@ export async function mountTui(options: MountOptions = {}) {
 			projectRoot: "/home/dev/code/demo",
 			home: "/home/dev",
 			model: { provider: "demo", model: "scripted" },
-			mode: "normal",
+			mode,
+			skipAllAvailable,
 			...(options.contextWindow === undefined
 				? {}
 				: { contextWindow: options.contextWindow }),
@@ -91,7 +111,7 @@ export async function mountTui(options: MountOptions = {}) {
 		onSuspend: () => quits.push("suspend"),
 	};
 	const store: HudStore = createHudStore(
-		initialHudState(tuiOptions.info.model),
+		initialHudState(tuiOptions.info.model, tuiOptions.info.mode),
 		clock,
 	);
 	const setup = await testRender(
@@ -156,8 +176,8 @@ export async function mountTui(options: MountOptions = {}) {
 	};
 }
 
-/** A session the test pushes events into directly. */
-export function pushSession(): TuiSession & {
+/** A session the test pushes events into directly. `setMode` pushes the `mode_change` itself. */
+export function pushSession(start: PermissionMode = "normal"): TuiSession & {
 	push(event: AgentEvent): void;
 	end(): void;
 	fail(error: Error): void;
@@ -167,6 +187,7 @@ export function pushSession(): TuiSession & {
 	let done = false;
 	let failure: Error | undefined;
 	let seq = 0;
+	let mode = start;
 	const events: AsyncIterable<AgentEvent> = {
 		[Symbol.asyncIterator]: () => ({
 			next: async (): Promise<IteratorResult<AgentEvent>> => {
@@ -193,6 +214,15 @@ export function pushSession(): TuiSession & {
 		submit: () => {},
 		respond: () => {},
 		interrupt: () => {},
+		setMode(next) {
+			if (next === mode) return;
+			mode = next;
+			queue.push({ ...at({ type: "mode_change", mode: next }), seq: seq++ });
+			poke();
+		},
+		get mode() {
+			return mode;
+		},
 		push(event) {
 			queue.push({ ...event, seq: seq++ });
 			poke();

@@ -4,6 +4,8 @@ import {
 	DENIED_TEXT,
 	JsonValue,
 	type PermissionAnswer,
+	type PermissionMode,
+	PLAN_BLOCKED_TEXT,
 	type ToolResultBlock,
 } from "@pk/schema";
 import type { ToolOutcome } from "@pk/tools";
@@ -40,13 +42,41 @@ export function unexpectedText(name: string, message: string): string {
 	return `${name} failed unexpectedly: ${message}`;
 }
 
-/** The AC-10 denied text, with your note when you gave one. */
+/** The result of a call plan mode blocked (spec 0006 AC-3). */
+export const PLAN_BLOCKED_RESULT_TEXT = `${PLAN_BLOCKED_TEXT}: pk is read only right now, so this call did not run. Keep exploring with read tools and describe your plan; the user will switch modes when ready.`;
+
+/** A deny's note, trimmed; `undefined` when there is none or it is only spaces (a plain deny). */
+export function denyNote(
+	answer: Extract<PermissionAnswer, { decision: "deny" }>,
+): string | undefined {
+	const note = answer.note?.trim() ?? "";
+	return note === "" ? undefined : note;
+}
+
+/** The denied text, with your trimmed note when you gave one (spec 0006 AC-4, AC-5). */
 export function deniedText(
 	answer: Extract<PermissionAnswer, { decision: "deny" }>,
 ): string {
-	return answer.note === undefined || answer.note === ""
-		? DENIED_TEXT
-		: `${DENIED_TEXT} (note: ${answer.note})`;
+	const note = denyNote(answer);
+	return note === undefined ? DENIED_TEXT : `${DENIED_TEXT} (note: ${note})`;
+}
+
+/** A mode in words, as notices show it: `accept edits`, `skip all`. */
+export function modeWords(mode: PermissionMode): string {
+	switch (mode) {
+		case "normal":
+			return "normal";
+		case "accept_edits":
+			return "accept edits";
+		case "plan":
+			return "plan";
+		case "skip_all":
+			return "skip all";
+		default: {
+			const unhandled: never = mode;
+			return unhandled;
+		}
+	}
 }
 
 /** Redacts, then cuts to `ERROR_TEXT_MAX` characters with `…` added when it was cut. Pure. */

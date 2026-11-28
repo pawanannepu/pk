@@ -1,7 +1,9 @@
 import {
 	type AgentEvent,
+	DENIED_TEXT,
 	MAIN_AGENT_ID,
 	type PermissionAnswer,
+	type PermissionMode,
 	type RequestId,
 } from "@pk/schema";
 import type { TuiClock, TuiSession } from "../session.ts";
@@ -18,6 +20,10 @@ export interface ScriptedSessionOptions {
 	readonly clock: TuiClock;
 	/** Divides every `delayMs`. Default 1. */
 	readonly speed?: number;
+	/** The start mode. Default `normal`. */
+	readonly mode?: PermissionMode;
+	/** Whether `setMode("skip_all")` is allowed. Default false. */
+	readonly skipAllAvailable?: boolean;
 }
 
 /** A push based async queue: one reader, ends once. */
@@ -65,11 +71,30 @@ function createChannel<T>(): {
 const isAllowed = (answer: PermissionAnswer): boolean =>
 	answer.decision !== "deny";
 
+/** A scripted denied result carries your trimmed note, as the real loop's does (spec 0006 AC-4). */
+function withNote(event: DemoEvent, answer: PermissionAnswer): DemoEvent {
+	if (answer.decision !== "deny" || event.type !== "tool_result") return event;
+	const note = answer.note?.trim() ?? "";
+	if (note === "") return event;
+	return {
+		...event,
+		result: {
+			...event.result,
+			content: event.result.content.map((block) =>
+				block.type === "text" && block.text === DENIED_TEXT
+					? { ...block, text: `${DENIED_TEXT} (note: ${note})` }
+					: block,
+			),
+		},
+	};
+}
+
 /**
  * A `TuiSession` that plays a committed script instead of calling a model (spec 0003). The Nth
  * `submit` starts with `turn_start` and your message, then plays turn N (the last turn repeats). A
  * permission step waits for `respond` and plays the allowed or denied branch. Submits while a turn
- * runs are ignored. `interrupt` stops the turn and ends it as `interrupted`.
+ * runs are ignored. `interrupt` stops the turn and ends it as `interrupted`. `setMode` changes the
+ * mode and emits `mode_change`; it never settles a scripted request.
  */
 export function createScriptedSession(
 	script: readonly DemoTurn[],
@@ -84,6 +109,7 @@ export function createScriptedSession(
 	let seq = 0;
 	let submits = 0;
 	let running: { cancelled: boolean; turnIndex: number } | undefined;
+	let mode: PermissionMode = options.mode ?? "normal";
 
 	const emit = (event: DemoEvent): void => {
 		channel.push({
@@ -110,17 +136,20 @@ export function createScriptedSession(
 	const play = async (
 		steps: readonly DemoStep[],
 		run: { cancelled: boolean },
+		answered?: PermissionAnswer,
 	): Promise<void> => {
 		for (const step of steps) {
 			await sleep(step.delayMs);
 			if (run.cancelled) return;
 			if ("event" in step) {
-				emit(step.event);
+				emit(
+					answered === undefined ? step.event : withNote(step.event, answered),
+				);
 				continue;
 			}
 			const answer = await answerOf(step.awaitRequest);
 			if (run.cancelled) return;
-			await play(isAllowed(answer) ? step.allowed : step.denied, run);
+			await play(isAllowed(answer) ? step.allowed : step.denied, run, answer);
 		}
 	};
 
@@ -168,6 +197,15 @@ export function createScriptedSession(
 				turnId: turnIdOf(run.turnIndex),
 				reason: "interrupted",
 			});
+		},
+		setMode(next) {
+			if (next === mode) return;
+			if (next === "skip_all" && options.skipAllAvailable !== true) return;
+			mode = next;
+			emit({ type: "mode_change", mode: next });
+		},
+		get mode() {
+			return mode;
 		},
 	};
 }

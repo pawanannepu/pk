@@ -40,7 +40,7 @@ exports[`widths (spec 0003 AC-6) the played demo at 140x40 matches its committed
                        │ ┌─                                                                                      ─┐ │ $0.0031 +1 unpriced   
                        │  › ask pk anything                                                                         │ last turn $0.0000     
                        │ └─                                                                                      ─┘ │└─                   ─┘
- ■ normal   ■ demo/scripted   ■ 31.9k tok   ■ $0.0031 +1 unpriced                                             ctrl+b/f2 rails · ctrl+c quit 
+ ■ normal   ■ demo/scripted   ■ 31.9k tok   ■ $0.0031 +1 unpriced                            shift+tab mode · ctrl+b/f2 rails · ctrl+c quit 
 "
 `;
 
@@ -84,7 +84,7 @@ exports[`widths (spec 0003 AC-6) the played demo at 120x40 matches its committed
 ┌─                                                                                           ─┐ │ $0.0031 +1 unpriced   
  › ask pk anything                                                                              │ last turn $0.0000     
 └─                                                                                           ─┘ │└─                   ─┘
- ■ normal   ■ demo/scripted   ■ 31.9k tok   ■ $0.0031 +1 unpriced                         ctrl+b/f2 rails · ctrl+c quit 
+ ■ normal   ■ demo/scripted   ■ 31.9k tok   ■ $0.0031 +1 unpriced        shift+tab mode · ctrl+b/f2 rails · ctrl+c quit 
 "
 `;
 

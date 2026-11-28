@@ -6,6 +6,7 @@ import {
 	localDate,
 } from "@pk/agent";
 import { createIdFactory, type Logger } from "@pk/env";
+import type { StartMode } from "@pk/permissions";
 import type { ModelRef, Settings } from "@pk/schema";
 import { type FileSystem, readFileTool } from "@pk/tools";
 import {
@@ -39,6 +40,8 @@ export interface SessionSetupInput {
 	readonly getEnv: (name: string) => string | undefined;
 	readonly userSettingsPath: string;
 	readonly logger: Logger;
+	/** From `resolveStartMode` (spec 0006 AC-7). */
+	readonly startMode: StartMode;
 }
 
 /** A session ready for the screen, and the model it talks to. */
@@ -89,6 +92,9 @@ export async function prepareSession(
 		newId,
 		now: Date.now,
 		logger: input.logger,
+		mode: input.startMode.mode,
+		skipAllAvailable: input.startMode.skipAllAvailable,
+		notices: input.startMode.notices,
 	});
 	return { session, model };
 }

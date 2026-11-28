@@ -198,6 +198,7 @@ export function sessionRecordFromEvent(
 		case "tool_run_start":
 		case "tool_result":
 		case "notice":
+		case "mode_change": // persisting it is #24's call (spec 0006 AC-13)
 			return undefined;
 		default: {
 			const unhandled: never = event;

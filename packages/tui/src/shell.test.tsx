@@ -82,7 +82,7 @@ describe("the permission panel (spec 0003 AC-13)", () => {
 			expect(t.frame()).toContain("PERMISSION");
 			expect(t.frame()).toContain("edit_file wants to write");
 			expect(t.frame()).toContain(
-				"[y] allow once   [a] this session   [n] deny",
+				"[y] allow once  [a] this session  [n] deny  [e] deny and explain",
 			);
 			expect(t.frame()).toContain("1 of 2");
 			expect(t.frame()).toContain("waiting");

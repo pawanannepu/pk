@@ -3,6 +3,7 @@
  * system, and an event reader. Not exported from `index.ts`; imported only by `*.test.ts` files.
  */
 import { createIdFactory, silentLogger } from "@pk/env";
+import type { StartNotice } from "@pk/permissions";
 import {
 	createFakeProvider,
 	DEFAULT_RETRY_POLICY,
@@ -15,7 +16,9 @@ import {
 	CallId,
 	type FakeStep,
 	type JsonObject,
+	type PermissionMode,
 	type ProviderStreamEvent,
+	type ToolKind,
 	type ToolName,
 } from "@pk/schema";
 import {
@@ -121,7 +124,7 @@ export function memoryFs(files: Readonly<Record<string, string>>): FileSystem {
 /** A test only tool: `run` decides the outcome. Its input is `{ path }`, so `agent` needs no `zod`. */
 export function testTool(
 	name: string,
-	kind: Tool["definition"]["kind"],
+	kind: Exclude<ToolKind, "execute">,
 	run: (signal: AbortSignal) => Promise<ToolOutcome>,
 ): Tool {
 	return defineTool({
@@ -129,6 +132,21 @@ export function testTool(
 		kind,
 		description: `test tool ${name}`,
 		input: ReadFileInput,
+		run: (_input, ctx) => run(ctx.signal),
+	});
+}
+
+/** A test only `execute` tool: its `path` input stands in for the command, the exact session key. */
+export function testCommandTool(
+	name: string,
+	run: (signal: AbortSignal) => Promise<ToolOutcome>,
+): Tool {
+	return defineTool({
+		name,
+		kind: "execute",
+		description: `test command tool ${name}`,
+		input: ReadFileInput,
+		sessionKey: (input) => input.path,
 		run: (_input, ctx) => run(ctx.signal),
 	});
 }
@@ -148,6 +166,9 @@ export interface HarnessOptions {
 	readonly maxRetries?: number;
 	/** Replaces the provider the session gets (the fake still records nothing then). */
 	readonly provider?: Provider;
+	readonly mode?: PermissionMode;
+	readonly skipAllAvailable?: boolean;
+	readonly notices?: readonly StartNotice[];
 }
 
 /** A session on the fake provider, with an event reader. */
@@ -207,6 +228,9 @@ export function startSession(
 		newId,
 		now,
 		logger: silentLogger,
+		mode: options.mode ?? "normal",
+		skipAllAvailable: options.skipAllAvailable ?? false,
+		notices: options.notices ?? [],
 	});
 	const reader = session.events[Symbol.asyncIterator]();
 	const events: AgentEvent[] = [];

@@ -12,6 +12,7 @@ import {
 	paths,
 	readSettingsFile,
 } from "@pk/env";
+import { resolveStartMode } from "@pk/permissions";
 import type { Settings } from "@pk/schema";
 import type { TuiEnv, TuiHandle, TuiUiSettings } from "@pk/tui";
 import { Command, CommanderError, Option } from "commander";
@@ -154,18 +155,39 @@ export async function main(
 			"--no-project-settings",
 			"ignore this project's .pk/settings.json and .pk/settings.local.json",
 		)
+		// spec 0006 AC-7: read only by the bare pk action; the hidden subcommands refuse them.
+		.addOption(
+			new Option("--mode <mode>", "start in this permission mode").choices(
+				START_MODES,
+			),
+		)
+		.option(
+			"--dangerously-skip-permissions",
+			"skip every permission prompt; only for sandboxes",
+		)
 		.exitOverride()
 		.configureOutput({
 			writeOut: (text) => io.stdout.write(text),
 			writeErr: (text) => io.stderr.write(text),
 		})
 		.action(async () => {
+			const flags = program.opts<RootFlags>();
+			// spec 0006 AC-7: the flag clash is checked first, so it reports the same with or without a terminal.
+			if (
+				flags.mode !== undefined &&
+				flags.dangerouslySkipPermissions === true
+			) {
+				io.stderr.write(
+					"pk: --mode and --dangerously-skip-permissions cannot be used together.\n",
+				);
+				exitCode = EXIT.usage;
+				return;
+			}
 			// spec 0005 AC-16, step 1: before the native library exec and before @pk/tui is imported.
 			if (refuseWithoutTerminal(io)) {
 				exitCode = EXIT.usage;
 				return;
 			}
-			const flags = program.opts<{ projectSettings?: boolean }>();
 			let session: AgentSession | undefined;
 			const ran = await runScreen("tui", async (tui, hooks, log) => {
 				const home = homedir();
@@ -179,12 +201,18 @@ export async function main(
 					flags.projectSettings === false,
 					log,
 				);
+				const startMode = resolveStartMode({
+					flagMode: flags.mode,
+					skipFlag: flags.dangerouslySkipPermissions === true,
+					settingsMode: settings.permissions?.mode,
+				});
 				const prepared = await prepareSession({
 					settings,
 					projectRoot,
 					getEnv: (name) => io.env[name],
 					userSettingsPath: userSettingsPath(),
 					logger: log,
+					startMode,
 				});
 				const live = prepared.session;
 				session = live;
@@ -195,8 +223,8 @@ export async function main(
 						projectRoot,
 						home,
 						model: prepared.model,
-						// decide() ignores modes until #7.
-						mode: "normal",
+						mode: startMode.mode,
+						skipAllAvailable: startMode.skipAllAvailable,
 					},
 					ui: uiSettings(settings),
 					env: terminalEnv(io.env),
@@ -223,6 +251,10 @@ export async function main(
 				.argParser(parseDuration),
 		)
 		.action(async (options: { duration: number }) => {
+			if (refuseModeFlags(io, program.opts<RootFlags>(), "__tui-smoke")) {
+				exitCode = EXIT.usage;
+				return;
+			}
 			if (!io.stdout.isTTY) {
 				io.stderr.write(
 					"pk: __tui-smoke needs a terminal (stdout is not a TTY).\n",
@@ -266,6 +298,10 @@ export async function main(
 			).argParser(parseDuration),
 		)
 		.action(async (options: { speed: number; exitAfter?: number }) => {
+			if (refuseModeFlags(io, program.opts<RootFlags>(), "__tui-demo")) {
+				exitCode = EXIT.usage;
+				return;
+			}
 			// Before the native library exec and before @pk/tui is imported (AC-20).
 			if (refuseWithoutTerminal(io)) {
 				exitCode = EXIT.usage;
@@ -294,6 +330,7 @@ export async function main(
 						home,
 						model: { provider: "demo", model: "scripted" },
 						mode: "normal",
+						skipAllAvailable: false,
 						contextWindow: 200_000,
 					},
 					ui: uiSettings(settings),
@@ -323,6 +360,27 @@ export async function main(
 		}
 		throw error;
 	}
+}
+
+/** The modes `--mode` accepts: every mode but `skip_all`, which only its own flag turns on. */
+const START_MODES = ["normal", "accept_edits", "plan"] as const;
+
+/** The root command's flags. */
+interface RootFlags {
+	readonly projectSettings?: boolean;
+	readonly mode?: (typeof START_MODES)[number];
+	readonly dangerouslySkipPermissions?: boolean;
+}
+
+/** The hidden subcommands neither accept nor read the mode flags (spec 0006 AC-7): a usage error. */
+function refuseModeFlags(io: Io, flags: RootFlags, command: string): boolean {
+	if (flags.mode === undefined && flags.dangerouslySkipPermissions !== true) {
+		return false;
+	}
+	io.stderr.write(
+		`pk: --mode and --dangerously-skip-permissions do not apply to ${command}.\n`,
+	);
+	return true;
 }
 
 /** Writes the AC-20 refusal to stderr and returns true when the full screen UI cannot start here. */

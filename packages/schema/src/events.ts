@@ -16,6 +16,7 @@ import {
 	TurnId,
 } from "./primitives.ts";
 import { Cost, ToolKind, Usage } from "./provider.ts";
+import { PermissionMode } from "./settings.ts";
 
 /** An item on the visible to do list (#12). Any status may move back, because the model rewrites the whole list. */
 export const TodoItem = z
@@ -44,12 +45,40 @@ export type PermissionAnswer = z.infer<typeof PermissionAnswer>;
  */
 export const DENIED_TEXT = "denied by user";
 
+/**
+ * The text a call blocked by plan mode gets as its result start (spec 0006 AC-3). The loop adds a
+ * sentence telling the model to keep exploring, so the screen matches with `startsWith`.
+ */
+export const PLAN_BLOCKED_TEXT = "blocked by plan mode";
+
+/**
+ * The whole result text of every call after a plain deny in the same reply (spec 0006 AC-5). None of
+ * them was validated, decided or run.
+ */
+export const NOT_RUN_TEXT =
+	"not run: the user denied an earlier call in this reply";
+
+/** What an error result's text says happened to the call, from `classifyResultText`. */
+export type ResultOutcome = "denied" | "blocked" | "not_run";
+
+/**
+ * Says whether an error result's text is a denial, a plan mode block or a call not run after a plain
+ * deny (spec 0006 AC-13), so the screen and headless share one matcher. `undefined` for any other text.
+ */
+export function classifyResultText(text: string): ResultOutcome | undefined {
+	if (text === NOT_RUN_TEXT) return "not_run";
+	if (text.startsWith(DENIED_TEXT)) return "denied";
+	if (text.startsWith(PLAN_BLOCKED_TEXT)) return "blocked";
+	return undefined;
+}
+
 /** How a turn ended. */
 export const TurnEndReason = z.enum([
 	"done",
 	"interrupted",
 	"turn_limit",
 	"error",
+	"denied",
 ]);
 /** How a turn ended. */
 export type TurnEndReason = z.infer<typeof TurnEndReason>;
@@ -150,6 +179,13 @@ export const AgentEvent = z.discriminatedUnion("type", [
 			type: z.literal("model_change"),
 			role: ModelRole,
 			model: ModelRef,
+		})
+		.readonly(),
+	z
+		.object({
+			...envelope,
+			type: z.literal("mode_change"),
+			mode: PermissionMode,
 		})
 		.readonly(),
 	z

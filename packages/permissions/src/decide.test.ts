@@ -1,28 +1,79 @@
 import { describe, expect, test } from "bun:test";
+import type { PermissionMode, ToolKind } from "@pk/schema";
 import { decide } from "./decide.ts";
 
-const none = { sessionAllows: new Set<string>() };
+const MODES: readonly PermissionMode[] = [
+	"normal",
+	"accept_edits",
+	"plan",
+	"skip_all",
+];
+const KINDS: readonly ToolKind[] = ["read", "write", "execute", "network"];
 
-describe("decide (spec 0005 AC-10)", () => {
-	test("a read kind tool is allowed", () => {
-		expect(decide({ tool: "read_file", kind: "read" }, none)).toEqual({
-			decision: "allow",
-		});
-	});
+type Expected = "allow" | "ask" | "block";
 
-	test("every other kind asks", () => {
-		for (const kind of ["write", "execute", "network"] as const) {
-			expect(decide({ tool: "t", kind }, none)).toEqual({ decision: "ask" });
+/** The spec 0006 AC-1 table, without a session allow. */
+const TABLE: Record<ToolKind, Record<PermissionMode, Expected>> = {
+	read: {
+		normal: "allow",
+		accept_edits: "allow",
+		plan: "allow",
+		skip_all: "allow",
+	},
+	write: {
+		normal: "ask",
+		accept_edits: "allow",
+		plan: "block",
+		skip_all: "allow",
+	},
+	execute: {
+		normal: "ask",
+		accept_edits: "ask",
+		plan: "block",
+		skip_all: "allow",
+	},
+	network: {
+		normal: "ask",
+		accept_edits: "ask",
+		plan: "ask",
+		skip_all: "allow",
+	},
+};
+
+const KEY = "t:ls";
+
+describe("decide (spec 0006 AC-1)", () => {
+	for (const kind of KINDS) {
+		for (const mode of MODES) {
+			const expected = TABLE[kind][mode];
+			test(`${kind} in ${mode} → ${expected}`, () => {
+				const got = decide(
+					{ tool: "t", kind, key: KEY },
+					{ mode, sessionAllows: new Set() },
+				);
+				expect(got.decision).toBe(expected);
+				if (got.decision === "block") expect(got.reason).toBe("plan_mode");
+			});
+
+			// A session allow turns ask into allow; a plan block still wins.
+			const withAllow = expected === "ask" ? "allow" : expected;
+			test(`${kind} in ${mode} with a matching session allow → ${withAllow}`, () => {
+				const got = decide(
+					{ tool: "t", kind, key: KEY },
+					{ mode, sessionAllows: new Set([KEY]) },
+				);
+				expect(got.decision).toBe(withAllow);
+			});
 		}
-	});
+	}
 
-	test("a tool allowed for the session runs without asking", () => {
-		const state = { sessionAllows: new Set(["write_file"]) };
-		expect(decide({ tool: "write_file", kind: "write" }, state)).toEqual({
-			decision: "allow",
-		});
-		expect(decide({ tool: "bash", kind: "execute" }, state)).toEqual({
-			decision: "ask",
-		});
+	test("a session allow matches on the exact key, not the tool name", () => {
+		const state = { mode: "normal" as const, sessionAllows: new Set(["t:ls"]) };
+		expect(
+			decide({ tool: "t", kind: "execute", key: "t:ls -la" }, state).decision,
+		).toBe("ask");
+		expect(
+			decide({ tool: "t", kind: "execute", key: "t" }, state).decision,
+		).toBe("ask");
 	});
 });

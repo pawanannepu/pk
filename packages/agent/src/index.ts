@@ -8,12 +8,13 @@
 
 /** `AgentError`, for wiring bugs such as two tools with one name. */
 export { AgentError, type AgentErrorCode } from "./errors.ts";
-/** The fixed result texts the loop writes for interrupted, failed and denied calls. */
+/** The fixed result texts the loop writes for interrupted, failed, denied and plan blocked calls. */
 export {
 	ERROR_TEXT_MAX,
 	INTERNAL_ERROR_TEXT,
 	INTERRUPTED_BEFORE_TEXT,
 	INTERRUPTED_DURING_TEXT,
+	PLAN_BLOCKED_RESULT_TEXT,
 	REPLY_FAILED_TEXT,
 } from "./results.ts";
 /** The session: its factory, deps and port, and the pure ledger fold. */

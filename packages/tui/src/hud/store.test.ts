@@ -22,7 +22,7 @@ describe("the batched store (spec 0003 AC-25)", () => {
 		createRoot((dispose) => {
 			const clock = new ManualClock();
 			const store = createHudStore(
-				initialHudState({ provider: "demo", model: "m" }),
+				initialHudState({ provider: "demo", model: "m" }, "normal"),
 				clock,
 			);
 			for (let i = 0; i < 2_000; i++) store.enqueue(delta(i));
@@ -40,7 +40,7 @@ describe("the batched store (spec 0003 AC-25)", () => {
 		createRoot((dispose) => {
 			const clock = new ManualClock();
 			const store = createHudStore(
-				initialHudState({ provider: "demo", model: "m" }),
+				initialHudState({ provider: "demo", model: "m" }, "normal"),
 				clock,
 			);
 			store.enqueue(delta(0));
@@ -68,7 +68,7 @@ describe("dispose (spec 0003 AC-19)", () => {
 		createRoot((dispose) => {
 			const clock = new ManualClock();
 			const store = createHudStore(
-				initialHudState({ provider: "demo", model: "m" }),
+				initialHudState({ provider: "demo", model: "m" }, "normal"),
 				clock,
 			);
 			store.enqueue(delta(0));

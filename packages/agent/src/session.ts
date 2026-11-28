@@ -1,5 +1,9 @@
 import { isPkError, type Logger, redact } from "@pk/env";
-import { decide } from "@pk/permissions";
+import {
+	decide,
+	type PermissionRequest,
+	type StartNotice,
+} from "@pk/permissions";
 import {
 	isProviderError,
 	type Provider,
@@ -16,13 +20,14 @@ import {
 	type MessageId,
 	type ModelRef,
 	type NewId,
+	NOT_RUN_TEXT,
 	type PermissionAnswer,
+	type PermissionMode,
 	type ProviderStreamEvent,
 	type RequestId,
 	repairConversation,
 	type StopReason,
 	type ToolCallBlock,
-	type ToolName,
 	type ToolResultBlock,
 	type TurnEndReason,
 	type TurnError,
@@ -35,11 +40,14 @@ import { AgentError } from "./errors.ts";
 import { EMPTY_FOLD, foldEvent, type ReplyFold, replyBlocks } from "./reply.ts";
 import {
 	deniedText,
+	denyNote,
 	errorOutcome,
 	INTERNAL_ERROR_TEXT,
 	INTERRUPTED_BEFORE_TEXT,
 	INTERRUPTED_DURING_TEXT,
 	inputErrorText,
+	modeWords,
+	PLAN_BLOCKED_RESULT_TEXT,
 	REPLY_FAILED_TEXT,
 	resultBlock,
 	unexpectedText,
@@ -65,6 +73,12 @@ export interface AgentDeps {
 	/** Epoch milliseconds. */
 	readonly now: () => number;
 	readonly logger: Logger;
+	/** The start mode, from `resolveStartMode` (spec 0006 AC-8). */
+	readonly mode: PermissionMode;
+	/** Whether `skip_all` may be reached: true only with `--dangerously-skip-permissions`. */
+	readonly skipAllAvailable: boolean;
+	/** Emitted, in order, as the session's first events. */
+	readonly notices: readonly StartNotice[];
 }
 
 /**
@@ -78,6 +92,14 @@ export interface AgentSession {
 	submit(text: string): void;
 	/** Answers the pending permission request. A stale or unknown `requestId` is ignored. */
 	respond(requestId: RequestId, answer: PermissionAnswer): void;
+	/**
+	 * Changes the permission mode at once and emits `mode_change` (spec 0006 AC-9). The same mode, a
+	 * call after `close()`, or `skip_all` without the skip flag does nothing. A pending permission
+	 * request is decided again under the new mode.
+	 */
+	setMode(mode: PermissionMode): void;
+	/** The permission mode right now, changed synchronously by `setMode`. */
+	readonly mode: PermissionMode;
 	/** Stops the running turn and drops the queue. Does nothing while idle. */
 	interrupt(): void;
 	/** Ends the running turn, drops the queue silently and ends `events`. Safe to call twice. */
@@ -104,6 +126,19 @@ interface TurnEnd {
 interface Streaming {
 	readonly messageId: MessageId;
 	readonly started: readonly CallId[];
+}
+
+/** What a permission wait resolved with: your answer, or a mode change that settled it. */
+type Waited =
+	| { readonly kind: "answer"; readonly answer: PermissionAnswer }
+	| { readonly kind: "mode_allow"; readonly mode: PermissionMode }
+	| { readonly kind: "mode_block" };
+
+/** One call's result. `stop` is true only for a plain deny, which ends the turn (spec 0006 AC-5). */
+interface CallRun {
+	readonly result: ToolResultBlock;
+	readonly durationMs: number;
+	readonly stop: boolean;
 }
 
 /** What a race between a tool run and the turn's abort came to. */
@@ -157,10 +192,17 @@ function errorStack(error: unknown): string | undefined {
 /**
  * Builds a session (spec 0005). Each turn streams the conversation to the model, runs the calls in
  * the reply one at a time (asking `decide` first), sends the results back, and repeats until the
- * model is done, you interrupt, or `maxTurns` model calls were made. Building replies and results
- * are pure functions; this is the shell around them. Throws `agent.duplicate_tool` for a wiring bug.
+ * model is done, you interrupt, you deny a call plainly, or `maxTurns` model calls were made.
+ * Building replies and results are pure functions; this is the shell around them. Throws
+ * `agent.duplicate_tool` or `agent.invalid_mode` for a wiring bug.
  */
 export function createAgentSession(deps: AgentDeps): AgentSession {
+	if (deps.mode === "skip_all" && !deps.skipAllAvailable) {
+		throw new AgentError(
+			"agent.invalid_mode",
+			"The skip_all mode needs skipAllAvailable, which only --dangerously-skip-permissions gives.",
+		);
+	}
 	const toolNames = deps.tools.map((t) => t.definition.name);
 	const duplicate = toolNames.find((name, i) => toolNames.indexOf(name) !== i);
 	if (duplicate !== undefined) {
@@ -187,14 +229,16 @@ export function createAgentSession(deps: AgentDeps): AgentSession {
 	let conversation: readonly Message[] = [];
 	let queue: readonly string[] = [];
 	let ledger: ReadonlyMap<string, FileStamp> = new Map();
-	let sessionAllows: ReadonlySet<ToolName> = new Set();
+	let sessionAllows: ReadonlySet<string> = new Set();
+	let mode: PermissionMode = deps.mode;
 	let running:
 		| { readonly turnId: TurnId; readonly controller: AbortController }
 		| undefined;
 	let pending:
 		| {
 				readonly requestId: RequestId;
-				readonly resolve: (answer: PermissionAnswer) => void;
+				readonly request: PermissionRequest;
+				readonly resolve: (waited: Waited) => void;
 		  }
 		| undefined;
 	let turnDone: Promise<void> = Promise.resolve();
@@ -213,6 +257,8 @@ export function createAgentSession(deps: AgentDeps): AgentSession {
 		seq += 1;
 		channel.push(event);
 	};
+
+	for (const notice of deps.notices) emit({ type: "notice", ...notice });
 
 	const append = (message: Message): void => {
 		conversation = [...conversation, message];
@@ -238,11 +284,12 @@ export function createAgentSession(deps: AgentDeps): AgentSession {
 			text: retryNoticeText(info),
 		});
 
-	/** Waits for `respond` with this id, or `undefined` when the turn aborts first. */
+	/** Waits for `respond` or a settling `setMode`, or `undefined` when the turn aborts first. */
 	const waitForAnswer = (
 		requestId: RequestId,
+		request: PermissionRequest,
 		signal: AbortSignal,
-	): Promise<PermissionAnswer | undefined> =>
+	): Promise<Waited | undefined> =>
 		new Promise((resolve) => {
 			if (signal.aborted) {
 				resolve(undefined);
@@ -255,9 +302,10 @@ export function createAgentSession(deps: AgentDeps): AgentSession {
 			signal.addEventListener("abort", onAbort, { once: true });
 			pending = {
 				requestId,
-				resolve: (answer) => {
+				request,
+				resolve: (waited) => {
 					signal.removeEventListener("abort", onAbort);
-					resolve(answer);
+					resolve(waited);
 				},
 			};
 		});
@@ -267,10 +315,11 @@ export function createAgentSession(deps: AgentDeps): AgentSession {
 		turnId: TurnId,
 		call: ToolCallBlock,
 		signal: AbortSignal,
-	): Promise<{ result: ToolResultBlock; durationMs: number }> => {
-		const finish = (outcome: ToolOutcome, durationMs = 0) => ({
+	): Promise<CallRun> => {
+		const finish = (outcome: ToolOutcome, durationMs = 0, stop = false) => ({
 			result: resultBlock(call.id, outcome),
 			durationMs,
+			stop,
 		});
 		if (signal.aborted) return finish(errorOutcome(INTERRUPTED_BEFORE_TEXT));
 		const tool = toolsByName.get(call.name);
@@ -284,26 +333,77 @@ export function createAgentSession(deps: AgentDeps): AgentSession {
 		if (!validated.ok) return finish(validated.outcome);
 
 		const kind = tool.definition.kind;
-		const decision = decide({ tool: call.name, kind }, { sessionAllows });
-		if (decision.decision === "ask") {
-			const requestId = deps.newId("req");
-			emit({ type: "permission_request", requestId, call, kind });
-			const answer = await waitForAnswer(requestId, signal);
-			if (answer === undefined || signal.aborted) {
-				return finish(errorOutcome(INTERRUPTED_BEFORE_TEXT));
-			}
-			switch (answer.decision) {
-				case "deny":
-					return finish(errorOutcome(deniedText(answer)));
-				case "allow_session":
-					sessionAllows = new Set([...sessionAllows, call.name]);
-					break;
-				case "allow_once":
-					break;
-				default: {
-					const _exhaustive: never = answer;
-					return _exhaustive;
+		const request: PermissionRequest = {
+			tool: call.name,
+			kind,
+			key: tool.permissionKey(validated.input),
+		};
+		const decision = decide(request, { mode, sessionAllows });
+		switch (decision.decision) {
+			case "allow":
+				break;
+			case "block":
+				log.info("tool call blocked", {
+					turnId,
+					tool: call.name,
+					callId: call.id,
+					reason: decision.reason,
+				});
+				return finish(errorOutcome(PLAN_BLOCKED_RESULT_TEXT));
+			case "ask": {
+				const requestId = deps.newId("req");
+				emit({ type: "permission_request", requestId, call, kind });
+				const waited = await waitForAnswer(requestId, request, signal);
+				if (waited === undefined || signal.aborted) {
+					return finish(errorOutcome(INTERRUPTED_BEFORE_TEXT));
 				}
+				switch (waited.kind) {
+					case "mode_block":
+						return finish(errorOutcome(PLAN_BLOCKED_RESULT_TEXT));
+					case "mode_allow": {
+						emit({
+							type: "notice",
+							level: "info",
+							code: "permissions.allowed_by_mode",
+							text: `allowed by ${modeWords(waited.mode)} mode`,
+						});
+						log.info("tool call allowed by mode", {
+							turnId,
+							tool: call.name,
+							callId: call.id,
+							mode: waited.mode,
+						});
+						break;
+					}
+					case "answer": {
+						const { answer } = waited;
+						switch (answer.decision) {
+							case "deny": {
+								const plain = denyNote(answer) === undefined;
+								return finish(errorOutcome(deniedText(answer)), 0, plain);
+							}
+							case "allow_session":
+								sessionAllows = new Set([...sessionAllows, request.key]);
+								break;
+							case "allow_once":
+								break;
+							default: {
+								const _exhaustive: never = answer;
+								return _exhaustive;
+							}
+						}
+						break;
+					}
+					default: {
+						const _exhaustive: never = waited;
+						return _exhaustive;
+					}
+				}
+				break;
+			}
+			default: {
+				const _exhaustive: never = decision;
+				return _exhaustive;
 			}
 		}
 
@@ -497,18 +597,28 @@ export function createAgentSession(deps: AgentDeps): AgentSession {
 				}
 
 				results = [];
+				let denied = false;
 				for (const call of calls) {
-					const ran = await runCall(turnId, call, signal);
+					// After a plain deny, no later call is validated, decided or run (spec 0006 AC-5).
+					const ran: CallRun = denied
+						? {
+								result: resultBlock(call.id, errorOutcome(NOT_RUN_TEXT)),
+								durationMs: 0,
+								stop: false,
+							}
+						: await runCall(turnId, call, signal);
 					results = [...results, ran.result];
 					emit({
 						type: "tool_result",
 						result: ran.result,
 						durationMs: ran.durationMs,
 					});
+					if (ran.stop) denied = true;
 				}
 				appendResults(results);
 				results = undefined;
 				if (signal.aborted) return { reason: "interrupted" };
+				if (denied) return { reason: "denied" };
 				if (modelCalls >= deps.maxTurns) {
 					log.info(`turn limit ${deps.maxTurns} reached`, { turnId });
 					return { reason: "turn_limit" };
@@ -614,7 +724,40 @@ export function createAgentSession(deps: AgentDeps): AgentSession {
 				return;
 			}
 			pending = undefined;
-			waiting.resolve(answer);
+			waiting.resolve({ kind: "answer", answer });
+		},
+		setMode(next) {
+			if (closed || next === mode) return;
+			if (next === "skip_all" && !deps.skipAllAvailable) {
+				log.debug("skip_all mode ignored without the skip flag");
+				return;
+			}
+			const from = mode;
+			mode = next;
+			emit({ type: "mode_change", mode: next });
+			log.info("mode change", { from, to: next });
+			const waiting = pending;
+			if (waiting === undefined) return;
+			const again = decide(waiting.request, { mode: next, sessionAllows });
+			switch (again.decision) {
+				case "ask":
+					return;
+				case "allow":
+					pending = undefined;
+					waiting.resolve({ kind: "mode_allow", mode: next });
+					return;
+				case "block":
+					pending = undefined;
+					waiting.resolve({ kind: "mode_block" });
+					return;
+				default: {
+					const _exhaustive: never = again;
+					return _exhaustive;
+				}
+			}
+		},
+		get mode() {
+			return mode;
 		},
 		interrupt() {
 			if (running === undefined) return;

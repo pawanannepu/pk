@@ -1,4 +1,5 @@
 import type {
+	InputRenderable,
 	KeyEvent,
 	ScrollBoxRenderable,
 	TextareaRenderable,
@@ -34,6 +35,12 @@ import {
 	SPINNER_INTERVAL_MS,
 } from "./hud-constants.ts";
 import { layoutFor, MIN_HEIGHT, MIN_WIDTH, RAIL_GAP } from "./layout.ts";
+import {
+	cleanNote,
+	NOTE_MAX_CHARS,
+	nextMode,
+	normalizeNoteDraft,
+} from "./permission-keys.ts";
 import { openScreen, type TuiHandle } from "./screen.ts";
 import type { TimerHandle, TuiExit, TuiOptions } from "./session.ts";
 import {
@@ -55,6 +62,9 @@ import { TranscriptItems } from "./ui/transcript.tsx";
 /** Header (2 rows) plus footer (1 row). */
 const CHROME_ROWS = 3;
 
+/** `[e]` opens the note field instead of answering (spec 0006 AC-6). */
+const NOTE_KEY = "e";
+
 const ANSWERS: Readonly<Record<string, PermissionAnswer>> = {
 	y: { decision: "allow_once" },
 	a: { decision: "allow_session" },
@@ -71,7 +81,11 @@ export function TuiApp(props: { options: TuiOptions; store?: HudStore }) {
 	const renderer = useRenderer();
 	const dims = useTerminalDimensions();
 	const store =
-		props.store ?? createHudStore(initialHudState(options.info.model), clock);
+		props.store ??
+		createHudStore(
+			initialHudState(options.info.model, options.info.mode),
+			clock,
+		);
 	const state = store.state;
 
 	// Theme: NO_COLOR, then capabilities once reported (repaint on change), else the env guess.
@@ -129,8 +143,9 @@ export function TuiApp(props: { options: TuiOptions; store?: HudStore }) {
 	const bottomMax = () =>
 		Math.max(3, Math.floor(centerHeight() * BOTTOM_PANEL_MAX_RATIO));
 
-	// The hero (AC-16): the globe turns while the transcript is empty, for at most HERO_RUN_MS.
-	const heroVisible = () => state().transcript.length === 0;
+	// The hero (AC-16): the globe turns until the first message, for at most HERO_RUN_MS. Start
+	// notices and the skip all line show under it (spec 0006 AC-11).
+	const heroVisible = () => !state().hasMessage;
 	const transcriptRows = () => centerHeight() - 3;
 	const globeMode = () =>
 		glyphs !== ASCII_GLYPHS &&
@@ -177,6 +192,31 @@ export function TuiApp(props: { options: TuiOptions; store?: HudStore }) {
 		),
 	);
 	const listening = () => head() !== undefined && now() >= guardUntil();
+
+	// The note field (spec 0006 AC-6): a local signal, not HUD state, so typing dispatches nothing.
+	// Each newly shown request starts on the keys row; the guard is not restarted by opening it.
+	const [noteOpen, setNoteOpen] = createSignal(false);
+	let noteInput: InputRenderable | undefined;
+	let draft = "";
+	createEffect(
+		on(
+			() => head()?.requestId,
+			() => {
+				setNoteOpen(false);
+				draft = "";
+			},
+		),
+	);
+	const onNoteInput = (value: string) => {
+		const clean = normalizeNoteDraft(value);
+		draft = clean;
+		if (clean !== value && noteInput) noteInput.value = clean;
+	};
+	const onNotePaste = (text: string) => {
+		const room = NOTE_MAX_CHARS - [...draft].length;
+		if (room <= 0 || !noteInput) return;
+		noteInput.insertText([...normalizeNoteDraft(text)].slice(0, room).join(""));
+	};
 
 	let textarea: TextareaRenderable | undefined;
 	let scroll: ScrollBoxRenderable | undefined;
@@ -311,6 +351,44 @@ export function TuiApp(props: { options: TuiOptions; store?: HudStore }) {
 			take(key);
 			return;
 		}
+		const open = head();
+		// While the note field is open, the input takes every key except these (spec 0006 AC-6).
+		if (open && noteOpen()) {
+			if (key.name === "return") {
+				take(key);
+				const note = cleanNote(noteInput?.value ?? draft);
+				respond(
+					open.requestId,
+					note === "" ? { decision: "deny" } : { decision: "deny", note },
+				);
+				return;
+			}
+			if (key.name === "escape") {
+				take(key);
+				setNoteOpen(false);
+				return;
+			}
+			if (key.name === "pageup" || key.name === "pagedown") {
+				take(key);
+				const page = Math.max(
+					1,
+					(scroll?.viewport.height ?? centerHeight()) - 2,
+				);
+				scroll?.scrollBy(key.name === "pageup" ? -page : page);
+				return;
+			}
+			if (key.name === "tab" && key.shift) take(key);
+			return;
+		}
+		// Shift+Tab steps the mode from the session's own getter, so fast presses never skip (AC-10).
+		if (key.name === "tab" && key.shift) {
+			take(key);
+			if (open && clock.now() < guardUntil()) return;
+			options.session.setMode(
+				nextMode(options.session.mode, options.info.skipAllAvailable),
+			);
+			return;
+		}
 		if ((key.ctrl && key.name === "b") || key.name === "f2") {
 			take(key);
 			setRailsHidden((hidden) => !hidden);
@@ -322,12 +400,18 @@ export function TuiApp(props: { options: TuiOptions; store?: HudStore }) {
 			scroll?.scrollBy(key.name === "pageup" ? -page : page);
 			return;
 		}
-		const open = head();
 		if (open) {
 			take(key);
 			if (clock.now() < guardUntil()) return;
-			const answer = ANSWERS[key.name.toLowerCase()];
-			if (answer && !key.ctrl && !key.meta) respond(open.requestId, answer);
+			if (key.ctrl || key.meta) return;
+			const name = key.name.toLowerCase();
+			if (name === NOTE_KEY) {
+				draft = "";
+				setNoteOpen(true);
+				return;
+			}
+			const answer = ANSWERS[name];
+			if (answer) respond(open.requestId, answer);
 			return;
 		}
 		const empty = (textarea?.plainText ?? "") === "";
@@ -405,6 +489,16 @@ export function TuiApp(props: { options: TuiOptions; store?: HudStore }) {
 									width={width()}
 									maxHeight={Math.max(PERMISSION_FIXED_ROWS, bottomMax())}
 									listening={listening()}
+									note={{
+										get open() {
+											return noteOpen();
+										},
+										onInput: onNoteInput,
+										onPaste: onNotePaste,
+										ref: (el) => {
+											noteInput = el;
+										},
+									}}
 								/>
 							)}
 						</Show>

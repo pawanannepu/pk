@@ -4,7 +4,9 @@ import type {
 	JsonObject,
 	MessageId,
 	ModelRef,
+	PermissionMode,
 	RequestId,
+	ResultOutcome,
 	TodoItem,
 	ToolCallBlock,
 	ToolDisplayDetails,
@@ -23,8 +25,11 @@ export interface ToolView {
 	readonly target?: string;
 	readonly input?: JsonObject;
 	readonly state: ToolState;
-	/** You denied it, so it stays out of the error count. */
-	readonly denied: boolean;
+	/**
+	 * Set from `classifyResultText` on an error result: denied, blocked by plan mode, or not run after
+	 * a plain deny. Any outcome shows dim and stays out of the error count (spec 0006 AC-12).
+	 */
+	readonly outcome?: ResultOutcome;
 	/** Clock time of `tool_run_start`, for the elapsed time while running. */
 	readonly runAt?: number;
 	readonly durationMs?: number;
@@ -32,6 +37,12 @@ export interface ToolView {
 	readonly errorLine?: string;
 	readonly display?: ToolDisplayDetails;
 }
+
+/** How loud a transcript notice is. */
+export type NoticeLevel = "info" | "warning" | "danger";
+
+/** The red line the transcript gets each time the mode enters `skip_all` (spec 0006 AC-11). */
+export const SKIP_ALL_LINE = "skip all: every tool runs without asking";
 
 /** One item of the transcript, keyed so Solid keeps its slot while it streams. */
 export type TranscriptItem =
@@ -55,7 +66,8 @@ export type TranscriptItem =
 	| {
 			readonly kind: "notice";
 			readonly key: string;
-			readonly level: "info" | "warning";
+			/** `danger` is the screen only red line for skip all (spec 0006 AC-11), counted as a warning. */
+			readonly level: NoticeLevel;
 			readonly text: string;
 	  }
 	| {
@@ -118,11 +130,15 @@ export interface HudState {
 	};
 	readonly todos: readonly TodoItem[];
 	readonly model: ModelRef;
+	/** The permission mode: `info.mode`, then each `mode_change`. */
+	readonly mode: PermissionMode;
 	/** Session total, never reset. */
 	readonly warnings: number;
 	/** Since the last `turn_start`. */
 	readonly errors: number;
 	readonly heroStopped: boolean;
+	/** A prompt was submitted or a message arrived: the hero gives way (spec 0006 AC-11). */
+	readonly hasMessage: boolean;
 	/** Counter for keys of items that have no ID of their own. */
 	readonly nextKey: number;
 }
@@ -144,9 +160,15 @@ export type UiAction =
 /** What `reduceHud` takes: an event from the session or one of the screen's own actions. */
 export type HudAction = AgentEvent | UiAction;
 
-/** The state before any event. */
-export function initialHudState(model: ModelRef): HudState {
-	return {
+/**
+ * The state before any event, in the start mode. Starting in `skip_all` adds the red skip all line,
+ * counted as a warning (spec 0006 AC-11).
+ */
+export function initialHudState(
+	model: ModelRef,
+	mode: PermissionMode,
+): HudState {
+	const base: HudState = {
 		turn: { status: "idle" },
 		submitting: false,
 		transcript: [],
@@ -164,9 +186,31 @@ export function initialHudState(model: ModelRef): HudState {
 		},
 		todos: [],
 		model,
+		mode,
 		warnings: 0,
 		errors: 0,
 		heroStopped: false,
+		hasMessage: false,
 		nextKey: 0,
+	};
+	return mode === "skip_all" ? withSkipAllLine(base) : base;
+}
+
+/** Adds the red skip all line and counts it as a warning. */
+export function withSkipAllLine(state: HudState): HudState {
+	return {
+		...state,
+		transcript: [
+			...state.transcript,
+			{
+				kind: "notice",
+				key: `notice:${state.nextKey}`,
+				level: "danger",
+				text: SKIP_ALL_LINE,
+			},
+		],
+		openSegment: undefined,
+		nextKey: state.nextKey + 1,
+		warnings: state.warnings + 1,
 	};
 }

@@ -7,7 +7,7 @@ The `pk` binary entry and composition root: commander, the provider registry (th
 ## Stack
 
 - Composition root: may use Bun types and any `@pk/*` except `bench`. `commander` 15.1.0.
-- May depend on: `@pk/env`, `@pk/tui`, `@pk/schema`, `@pk/provider`, `@pk/provider-openai` today; any `@pk/*` except `bench`, plus `commander` (spec 0001 module map, checked by `bun run boundaries`)
+- May depend on: `@pk/env`, `@pk/tui`, `@pk/schema`, `@pk/provider`, `@pk/provider-openai`, `@pk/agent`, `@pk/tools` today; any `@pk/*` except `bench`, plus `commander` (spec 0001 module map, checked by `bun run boundaries`)
 
 ## Commands
 
@@ -23,7 +23,7 @@ Root `## Rules` apply here. In addition:
 - Exit codes come only from the table in `src/exit-codes.ts` (0 success, 1 failure, 2 usage, 128 plus signal).
 - `console` is allowed here (Biome `noConsole` is off for `packages/cli/**` and `scripts/**` only); every other package logs through the `env` logger.
 - Wiring is plain constructor arguments assembled here; no other package wires packages together.
-- `src/providers.ts` builds the provider registry: every real provider is wrapped as `withRetry(withTimeouts(adapter))`, and `PK_FAKE_SCRIPT` swaps in the fake provider (wrapped in `withRetry` only). `program.ts` does not call it yet; #6 wires it to the loop.
+- `src/providers.ts` builds the provider registry: every real provider is wrapped as `withRetry(withTimeouts(adapter))`, and `PK_FAKE_SCRIPT` swaps in the fake provider (wrapped in `withRetry` only). `src/session-setup.ts` (`prepareSession`) calls it for bare `pk`, builds the `FileSystem` port and the agent session, and throws any setup `ProviderError` before the screen opens; `program.ts` prints it as `pk: <message>` and exits 1. Quitting closes the session through `closeWithin` (1 s bound).
 
 ## Gotchas
 

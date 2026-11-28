@@ -4,7 +4,7 @@ The agent loop and everything that shapes what the model knows and how it behave
 
 ## Slice 1: First working conversation
 
-### 6. Agent loop & read file tool · in-progress
+### 6. Agent loop & read file tool · done
 The loop: send the conversation, run the tool calls the model makes, feed results back, repeat until the task is done, the user interrupts, or the turn limit is reached. First tool: read a file with line numbers. A minimal placeholder system prompt until #17.
 **Done when:** you run `pk`, ask about a file, the model reads it through a real tool call and the answer streams back; a failing tool call goes back to the model as an error and the session continues; the turn limit stops a runaway loop with a clear message. This is the walking skeleton. (basis: tracer bullet, the first slice touches every layer)
 spec [0005](../specs/0005-agent-loop-read-file/index.md)

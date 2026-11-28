@@ -6,7 +6,11 @@ import { useHud } from "./context.tsx";
 import { Marker, Words } from "./primitives.tsx";
 
 /** The built in hints: only keys that work today (AC-9). */
-const BUILT_IN_HINTS = ["ctrl+b/f2 rails", "ctrl+c quit"] as const;
+const BUILT_IN_HINTS = [
+	"shift+tab mode",
+	"ctrl+b/f2 rails",
+	"ctrl+c quit",
+] as const;
 
 /** The legend marker color for a permission mode (AC-9). */
 export function modeTone(mode: PermissionMode): "bracket" | "amber" | "red" {
@@ -33,12 +37,13 @@ export function Footer(props: { width: number; flash?: string }) {
 	const hud = useHud();
 	const g = hud.glyphs;
 	const state = hud.store.state;
-	const mode = hud.options.info.mode;
+	// The live mode: `info.mode`, then each `mode_change` (spec 0006 AC-10).
+	const mode = () => state().mode;
 
 	const values = () => {
 		const s = state();
 		return [
-			mode,
+			s.mode,
 			sanitizeForScreen(formatModelRef(s.model)),
 			`${formatTokens(s.usage.totalTokens)} tok`,
 			formatCost(s.cost, g.rule),
@@ -82,7 +87,7 @@ export function Footer(props: { width: number; flash?: string }) {
 				{(value, i) => (
 					<>
 						<Marker
-							tone={i() === 0 ? modeTone(mode) : "bracket"}
+							tone={i() === 0 ? modeTone(mode()) : "bracket"}
 							value={value}
 						/>
 						<span>{"   "}</span>

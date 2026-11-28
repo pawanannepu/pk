@@ -2,7 +2,7 @@ import { redact } from "@pk/env";
 import {
 	type AgentEventOf,
 	type CallId,
-	DENIED_TEXT,
+	classifyResultText,
 	type JsonObject,
 	MAIN_AGENT_ID,
 	type MessageId,
@@ -12,12 +12,13 @@ import {
 import { ERROR_HINTS } from "../error-hints.ts";
 import { SPARK_CALLS } from "../hud-constants.ts";
 import { toolTarget } from "../text.ts";
-import type {
-	FileView,
-	HudAction,
-	HudState,
-	ToolView,
-	TranscriptItem,
+import {
+	type FileView,
+	type HudAction,
+	type HudState,
+	type ToolView,
+	type TranscriptItem,
+	withSkipAllLine,
 } from "./state.ts";
 
 const UTF8 = new TextEncoder();
@@ -138,7 +139,6 @@ function ensureTool(state: HudState, callId: CallId): [HudState, ToolView] {
 		callId,
 		name: "tool",
 		state: "pending",
-		denied: false,
 	};
 	const added = addItem(
 		{ ...state, tools: { ...state.tools, [callId]: tool } },
@@ -183,27 +183,48 @@ function onToolResult(
 		block.type === "text" ? [block.text] : [],
 	);
 	const firstText = texts[0] ?? "";
-	const denied = result.isError && firstText.startsWith(DENIED_TEXT);
+	const outcome = result.isError ? classifyResultText(firstText) : undefined;
 	const parsed = ToolDisplayDetails.safeParse(result.details);
 	const display = parsed.success ? parsed.data : undefined;
+	const { outcome: _old, ...rest } = tool;
 	const next: ToolView = {
-		...tool,
+		...rest,
 		state: result.isError ? "failed" : "done",
-		denied,
+		...(outcome === undefined ? {} : { outcome }),
 		durationMs: event.durationMs,
 		sizeBytes: texts.reduce((sum, text) => sum + UTF8.encode(text).length, 0),
 		...(result.isError ? { errorLine: firstText.split("\n")[0] ?? "" } : {}),
 		...(display === undefined ? {} : { display }),
 	};
 	return {
-		...ensured,
+		...dropPermission(ensured, result.callId),
 		tools: { ...ensured.tools, [result.callId]: next },
 		files: display ? touchFiles(ensured.files, display) : ensured.files,
-		errors: result.isError && !denied ? ensured.errors + 1 : ensured.errors,
+		errors:
+			result.isError && outcome === undefined
+				? ensured.errors + 1
+				: ensured.errors,
 	};
 }
 
-function onMessage(state: HudState, event: AgentEventOf<"message">): HudState {
+/**
+ * Drops a pending permission for this call: a mode switch settled it, so the panel closes
+ * (spec 0006 AC-9).
+ */
+function dropPermission(state: HudState, callId: CallId): HudState {
+	const kept = state.permissions.filter((p) => p.call.id !== callId);
+	return kept.length === state.permissions.length
+		? state
+		: { ...state, permissions: kept };
+}
+
+function onMessage(
+	unmarked: HudState,
+	event: AgentEventOf<"message">,
+): HudState {
+	const state = unmarked.hasMessage
+		? unmarked
+		: { ...unmarked, hasMessage: true };
 	const { message } = event;
 	if (message.role === "user") {
 		const text = message.content
@@ -266,6 +287,8 @@ function onTurnEnd(state: HudState, event: AgentEventOf<"turn_end">): HudState {
 			return addNotice(ended, "info", "interrupted");
 		case "turn_limit":
 			return addNotice(ended, "warning", "turn limit reached");
+		case "denied":
+			return addNotice(ended, "info", "stopped: you denied a tool call");
 		case "error": {
 			const withError = addError(
 				ended,
@@ -318,7 +341,6 @@ export function reduceHud(state: HudState, action: HudAction): HudState {
 				callId: action.callId,
 				name: action.name,
 				state: "pending",
-				denied: false,
 			};
 			return addItem(
 				{ ...state, tools: { ...state.tools, [action.callId]: tool } },
@@ -340,7 +362,7 @@ export function reduceHud(state: HudState, action: HudAction): HudState {
 		case "tool_run_start": {
 			const [ensured, tool] = ensureTool(state, action.callId);
 			return {
-				...ensured,
+				...dropPermission(ensured, action.callId),
 				tools: {
 					...ensured.tools,
 					[action.callId]: {
@@ -380,12 +402,17 @@ export function reduceHud(state: HudState, action: HudAction): HudState {
 			return { ...state, todos: action.todos };
 		case "model_change":
 			return action.role === "main" ? { ...state, model: action.model } : state;
+		case "mode_change": {
+			if (action.mode === state.mode) return state;
+			const changed = { ...state, mode: action.mode };
+			return action.mode === "skip_all" ? withSkipAllLine(changed) : changed;
+		}
 		case "notice":
 			return addNotice(state, action.level, action.text);
 		case "turn_end":
 			return onTurnEnd(state, action);
 		case "ui_submit":
-			return { ...state, submitting: true };
+			return { ...state, submitting: true, hasMessage: true };
 		case "ui_respond":
 			return {
 				...state,

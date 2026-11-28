@@ -11,6 +11,7 @@
  * 3. The native library home ("Process behavior"): cases (1) to (7) of the spec's first proof. The
  *    library goes to `<PK_HOME>/native/<id>/`, never `TMPDIR`, through a self exec (same PID), and
  *    pk fails closed on a folder it cannot trust.
+ * 4. Permission modes (spec 0006 AC-15): `--mode`, Shift+Tab, skip all, the flag clash, the setting.
  * It also prints the binary size and startup time, which spec 0001 asks to record per target.
  */
 import { lstatSync, readdirSync, realpathSync, statSync } from "node:fs";
@@ -34,6 +35,10 @@ const { version } = (await Bun.file(join(ROOT, "package.json")).json()) as {
 	version: string;
 };
 const isRoot = process.getuid?.() === 0;
+// biome-ignore lint/suspicious/noControlCharactersInRegex: matching terminal escapes is the point
+const TERMINAL_ESCAPE = /\x1b\[[0-9;?<>=]*[ -/]*[@-~]|\x1b[()][0-9A-Za-z]/g;
+// biome-ignore lint/suspicious/noControlCharactersInRegex: matching color codes is the point
+const SGR = /\x1b\[[0-9;]*m/g;
 
 let failures = 0;
 const check = (ok: boolean, label: string, detail?: string): void => {
@@ -458,6 +463,170 @@ try {
 			"pk: Ctrl+C closes the session and exits 130 with the terminal restored",
 			`exit ${exitCode}, tail ${JSON.stringify(out.slice(-300))}`,
 		);
+	}
+
+	// spec 0006 AC-15: permission modes in the compiled binary. The mode shows in the footer, Shift+Tab
+	// steps it, skip all is loud, the flag clash exits 2, and a skip_all setting is ignored.
+	{
+		const project = join(scratch, "modes-project");
+		await mkdir(join(project, ".git"), { recursive: true });
+		const scriptPath = join(scratch, "modes-script.json");
+		await Bun.write(
+			scriptPath,
+			JSON.stringify({
+				v: 1,
+				steps: [
+					{
+						events: [
+							{ type: "text_delta", text: "ok" },
+							{ type: "stop", reason: "end_turn" },
+						],
+					},
+				],
+			}),
+		);
+		/** Drops escape sequences, so text split by color codes reads whole. */
+		const plain = (raw: string) => raw.replace(TERMINAL_ESCAPE, "");
+		/** Runs pk in a PTY, waits for the screen, runs `during`, then Ctrl+C. */
+		const runPk = async (
+			args: readonly string[],
+			env: Record<string, string>,
+			during: (io: {
+				output: () => string;
+				type: (keys: string) => void;
+				waitFor: (needle: string | RegExp, from?: number) => Promise<boolean>;
+			}) => Promise<void>,
+		) => {
+			const chunks: Uint8Array[] = [];
+			const proc = Bun.spawn([binary, ...args], {
+				cwd: project,
+				env: { ...env, PK_FAKE_SCRIPT: scriptPath },
+				terminal: {
+					cols: 140,
+					rows: 40,
+					data: (_t, data) => chunks.push(data),
+				},
+			});
+			const killer = setTimeout(() => proc.kill("SIGKILL"), 30_000);
+			const output = () => Buffer.concat(chunks).toString("utf8");
+			const waitFor = async (needle: string | RegExp, from = 0) => {
+				const until = Date.now() + 8_000;
+				while (Date.now() < until) {
+					const text = plain(output().slice(from));
+					if (
+						typeof needle === "string"
+							? text.includes(needle)
+							: needle.test(text)
+					)
+						return true;
+					await Bun.sleep(50);
+				}
+				return false;
+			};
+			const up = await waitFor("ask pk anything");
+			if (up)
+				await during({ output, type: (k) => proc.terminal?.write(k), waitFor });
+			proc.terminal?.write("\x03");
+			const exitCode = await proc.exited;
+			clearTimeout(killer);
+			await Bun.sleep(100);
+			proc.terminal?.close();
+			return { up, exitCode, output: output() };
+		};
+
+		{
+			let planShown = false;
+			let normalAfter = false;
+			const run = await runPk(["--mode", "plan"], demoBase, async (io) => {
+				planShown = await io.waitFor("■ plan");
+				await Bun.sleep(300);
+				const from = io.output().length;
+				io.type("\x1b[Z");
+				normalAfter = await io.waitFor("normal", from);
+			});
+			check(
+				run.up && planShown && normalAfter && run.exitCode === 130,
+				"pk --mode plan: the footer shows plan, and Shift+Tab steps to normal",
+				`up ${run.up}, plan ${planShown}, normal after shift+tab ${normalAfter}, exit ${run.exitCode}`,
+			);
+		}
+
+		{
+			let line = false;
+			let marker = false;
+			const run = await runPk(
+				["--dangerously-skip-permissions"],
+				demoBase,
+				async (io) => {
+					line = await io.waitFor("skip all: every tool runs without asking");
+					marker = await io.waitFor("■ skip_all");
+				},
+			);
+			// The SGR in force just before a text: the marker and the line share the red token.
+			const colorBefore = (raw: string, text: string) => {
+				const at = raw.indexOf(text);
+				const codes = raw.slice(0, at).match(SGR) ?? [];
+				return codes.at(-1);
+			};
+			const lineColor = colorBefore(run.output, "skip all: every tool");
+			const markerColor = colorBefore(run.output, "skip_all");
+			check(
+				run.up &&
+					line &&
+					marker &&
+					lineColor !== undefined &&
+					lineColor === markerColor,
+				"pk --dangerously-skip-permissions: the red skip all line and a red skip_all marker",
+				`up ${run.up}, line ${line}, marker ${marker}, colors ${JSON.stringify([lineColor, markerColor])}`,
+			);
+		}
+
+		{
+			const proc = Bun.spawn(
+				[binary, "--mode", "plan", "--dangerously-skip-permissions"],
+				{ cwd: project, env: demoBase, stdout: "pipe", stderr: "pipe" },
+			);
+			const [stderr, exitCode] = await Promise.all([
+				new Response(proc.stderr).text(),
+				proc.exited,
+			]);
+			check(
+				exitCode === 2 &&
+					stderr ===
+						"pk: --mode and --dangerously-skip-permissions cannot be used together.\n",
+				"pk --mode plan --dangerously-skip-permissions exits 2 with the clash message",
+				`exit ${exitCode}, stderr ${JSON.stringify(stderr)}`,
+			);
+		}
+
+		{
+			const settingsHome = await caseHome("skip-all-setting");
+			await mkdir(settingsHome.home, { recursive: true, mode: 0o700 });
+			await Bun.write(
+				join(settingsHome.home, "settings.json"),
+				JSON.stringify({ permissions: { mode: "skip_all" } }),
+			);
+			let warned = false;
+			let normal = false;
+			const run = await runPk(
+				[],
+				{ ...demoBase, PK_HOME: settingsHome.home },
+				async (io) => {
+					warned = await io.waitFor(
+						'permissions.mode "skip_all" in your settings is ignored.',
+					);
+					normal = await io.waitFor("■ normal");
+				},
+			);
+			check(
+				run.up &&
+					warned &&
+					normal &&
+					!plain(run.output).includes("skip all: every tool"),
+				'permissions.mode "skip_all" in settings: pk starts in normal with the warning notice',
+				`up ${run.up}, warning ${warned}, normal ${normal}`,
+			);
+		}
 	}
 
 	// spec 0003 AC-3 and AC-4: the color codes the binary actually writes, per color depth.

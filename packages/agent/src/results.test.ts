@@ -1,9 +1,12 @@
 import { describe, expect, test } from "bun:test";
-import { DENIED_TEXT } from "@pk/schema";
+import { DENIED_TEXT, PLAN_BLOCKED_TEXT } from "@pk/schema";
 import {
 	clipErrorText,
 	deniedText,
+	denyNote,
 	ERROR_TEXT_MAX,
+	modeWords,
+	PLAN_BLOCKED_RESULT_TEXT,
 	resultBlock,
 } from "./results.ts";
 import { callId } from "./test-support.ts";
@@ -78,5 +81,24 @@ describe("resultBlock (spec 0005 AC-4)", () => {
 		expect(resultBlock(callId(7), { content: [], isError: true }).callId).toBe(
 			callId(7),
 		);
+	});
+});
+
+describe("deny notes and mode words (spec 0006 AC-4, AC-5, AC-9)", () => {
+	test("a note is trimmed, and a note of only spaces is a plain deny", () => {
+		expect(deniedText({ decision: "deny", note: "  use edit  " })).toBe(
+			`${DENIED_TEXT} (note: use edit)`,
+		);
+		expect(denyNote({ decision: "deny", note: " \t " })).toBeUndefined();
+		expect(deniedText({ decision: "deny", note: "   " })).toBe(DENIED_TEXT);
+	});
+
+	test("modes read as words in notices", () => {
+		expect(modeWords("accept_edits")).toBe("accept edits");
+		expect(modeWords("skip_all")).toBe("skip all");
+	});
+
+	test("the plan block result starts with the shared prefix", () => {
+		expect(PLAN_BLOCKED_RESULT_TEXT).toStartWith(`${PLAN_BLOCKED_TEXT}: `);
 	});
 });

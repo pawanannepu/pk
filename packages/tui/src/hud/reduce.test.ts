@@ -16,7 +16,8 @@ import { formatCost } from "../format.ts";
 import { reduceHud } from "./reduce.ts";
 import { type HudAction, type HudState, initialHudState } from "./state.ts";
 
-const base = () => initialHudState({ provider: "demo", model: "scripted" });
+const base = () =>
+	initialHudState({ provider: "demo", model: "scripted" }, "normal");
 let seq = 0;
 const ev = (event: DemoEvent, at = "2026-11-22T10:00:00.000Z"): AgentEvent => ({
 	...event,
@@ -77,7 +78,7 @@ describe("the full demo through reduceHud (spec 0003 Critical test scenarios)", 
 	test("denied branch: no error count after turn 2", () => {
 		const afterTwo = run([...turnEvents(0, false), ...turnEvents(1, false)]);
 		expect(afterTwo.errors).toBe(0);
-		expect(afterTwo.tools[demoId("call", 2)]?.denied).toBe(true);
+		expect(afterTwo.tools[demoId("call", 2)]?.outcome).toBe("denied");
 		expect(afterTwo.files.map((f) => f.path)).toEqual([
 			"src/provider/index.ts",
 		]);
@@ -451,7 +452,7 @@ describe("counts, files and usage (spec 0003 AC-8, AC-10)", () => {
 		]);
 		expect(s.tools[demoId("call", 41)]).toMatchObject({
 			state: "failed",
-			denied: true,
+			outcome: "denied",
 		});
 		expect(s.errors).toBe(0);
 	});
@@ -463,7 +464,7 @@ describe("counts, files and usage (spec 0003 AC-8, AC-10)", () => {
 				text: "denied by user (note: use the test fixture instead)",
 			}),
 		]);
-		expect(s.tools[demoId("call", 42)]).toMatchObject({ denied: true });
+		expect(s.tools[demoId("call", 42)]).toMatchObject({ outcome: "denied" });
 		expect(s.errors).toBe(0);
 	});
 

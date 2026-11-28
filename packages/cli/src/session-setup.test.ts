@@ -50,6 +50,7 @@ const input = (
 	getEnv: (name: string) => env[name],
 	userSettingsPath: "/home/you/.config/pk/settings.json",
 	logger: silentLogger,
+	startMode: { mode: "normal" as const, skipAllAvailable: false, notices: [] },
 });
 
 /** Reads events until the first `turn_end`. */
@@ -134,6 +135,8 @@ describe("closeWithin", () => {
 		submit: () => {},
 		respond: () => {},
 		interrupt: () => {},
+		setMode: () => {},
+		mode: "normal",
 		close,
 		conversation: [],
 		ledger: new Map(),
@@ -157,5 +160,38 @@ describe("closeWithin", () => {
 			10_000,
 		);
 		expect(closed).toBe(true);
+	});
+});
+
+describe("prepareSession start mode wiring (spec 0006 AC-7, AC-8)", () => {
+	test("the resolved mode and its notices reach the session, notices first", async () => {
+		const path = scriptFile("mode.json", [answerStep]);
+		const notice = {
+			level: "warning" as const,
+			code: "permissions.skip_all_setting_ignored",
+			text: "ignored",
+		};
+		const { session } = await prepareSession({
+			...input(Settings.parse({}), { PK_FAKE_SCRIPT: path }),
+			startMode: { mode: "plan", skipAllAvailable: false, notices: [notice] },
+		});
+		expect(session.mode).toBe("plan");
+		session.submit("hi");
+		const events = await oneTurn(session);
+		expect(events[0]).toMatchObject({ type: "notice", ...notice });
+		await closeWithin(session);
+	});
+
+	test("skip_all starts only with skipAllAvailable, and setMode can return to it", async () => {
+		const path = scriptFile("skip.json", [answerStep]);
+		const { session } = await prepareSession({
+			...input(Settings.parse({}), { PK_FAKE_SCRIPT: path }),
+			startMode: { mode: "skip_all", skipAllAvailable: true, notices: [] },
+		});
+		expect(session.mode).toBe("skip_all");
+		session.setMode("normal");
+		session.setMode("skip_all");
+		expect(session.mode).toBe("skip_all");
+		await closeWithin(session);
 	});
 });

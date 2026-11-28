@@ -1,7 +1,7 @@
 # 0005. Agent loop and read file tool: one session object, one signal per turn
 
 **Date**: 2026-11-27
-**Status**: In Progress
+**Status**: Accepted
 
 ## Summary
 

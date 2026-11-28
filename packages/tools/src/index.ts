@@ -26,6 +26,7 @@ export {
 	type FileStat,
 	type FileSystem,
 	invalidInputText,
+	invalidPermissionKey,
 	type Tool,
 	type ToolContext,
 	type ToolOutcome,

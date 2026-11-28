@@ -123,7 +123,7 @@ Left: `◢◣ PK` in bold, then `terminal coding agent` dim. Middle: the project
 
 - The status lamp: `◉` and a word. `ready` in `textDim` when idle, `working` in `text` while a turn runs, and `waiting` while a permission request is open, swapping between `amber` and `textDim` once a second.
 - An amber `▲ n` warning count when n is above 0. It counts the whole session and never resets.
-- A red `◉ n err` count when n is above 0. It counts failed tool calls and error turn ends since the last turn started. A call you denied and a call cut off by the end of a turn do not count.
+- A red `◉ n err` count when n is above 0. It counts failed tool calls and error turn ends since the last turn started. A call you denied, a call blocked by plan mode, a call not run after a plain deny and a call cut off by the end of a turn do not count.
 
 When the width is short, the middle shortens first (ellipsis in the middle), then the subtitle drops.
 
@@ -132,10 +132,10 @@ When the width is short, the middle shortens first (ellipsis in the middle), the
 A legend strip of `■` markers and values on the left, hints on the right in `textDim`:
 
 ```
- ■ normal   ■ openai/gpt-5   ■ 12.4k tok   ■ $0.04 +1 unpriced          ctrl+b/f2 rails · ctrl+c quit
+ ■ normal   ■ openai/gpt-5   ■ 12.4k tok   ■ $0.04 +1 unpriced     shift+tab mode · ctrl+b/f2 rails · ctrl+c quit
 ```
 
-- The mode marker is `bracket` for `normal` and `plan`, amber for `accept_edits`, red for `skip_all`.
+- The mode marker is `bracket` for `normal` and `plan`, amber for `accept_edits`, red for `skip_all`. It starts from the start mode and follows each `mode_change`, as does the SESSION rail's mode row (spec 0006).
 - Tokens are the session total (input, cache read, cache write and output). Cost uses 2 decimals from $0.01, else 4. A call with no price shows as `+n unpriced`, never as $0; before any call is priced the figure is the `rule` glyph (`─ +2 unpriced`).
 - Hints show only keys that work today. Later features add theirs through `TuiOptions.hints`. While a turn runs the footer adds `turn running`, and after a copy it shows `copy sent (N chars)` for 2 seconds.
 - Hints drop from the left when space is short. The values never do.
@@ -158,11 +158,11 @@ When a rail is too short, whole panels drop from the bottom up (FILES, then PLAN
 
 ## Hero
 
-While the transcript is empty, the center shows the hero: a Braille globe (28 columns by 14 rows) tilted 23.4°, the wordmark, and three dim tips (`type a prompt and press enter`, `ctrl+b hides the side rails`, `hold shift (option on macOS) to select text natively`).
+Until your first message, the center shows the hero: a Braille globe (28 columns by 14 rows) tilted 23.4°, the wordmark, and three dim tips (`type a prompt and press enter`, `ctrl+b hides the side rails`, `hold shift (option on macOS) to select text natively`).
 
 - Land is drawn in `textDim`, the outline in `bracket`, and the graticule (a line every 30°) in `line`. Where layers share a Braille cell, outline beats land and land beats graticule. In `none` mode the graticule is not drawn.
 - The land comes from a committed 72 by 36 mask (one cell per 5°), derived once from public domain Natural Earth data.
-- The globe turns at 8 frames per second, 3° per frame, and stops 60 seconds after start. The hero is gone as soon as the transcript has an item.
+- The globe turns at 8 frames per second, 3° per frame, and stops 60 seconds after start. The hero is gone as soon as you submit a prompt or a message arrives. Notices that come before that (a start warning, the red skip all line) show under it, above the input.
 - When the transcript region is under 24 rows or 40 columns, the hero is the ASCIIFont `tiny` rendering of `PK` with the tips. In ASCII mode it is a four line ASCII art `PK` instead, since every ASCIIFont uses block glyphs.
 
 ## Transcript items
@@ -193,10 +193,11 @@ A blank row separates turns. Tool lines, notices and reply text sit 2 columns in
 - **Your message**: a `┃` bar in `bracket` down its left edge and a bold `›`.
 - **Reply**: plain wrapped text (markdown arrives with #14). One assistant message can make several reply or reasoning segments: a segment ends when any other item is added after it.
 - **Reasoning**: folds to one dim line, `∿ thinking` with a spinner while it streams, then `∿ thought for Ns`.
-- **Tool call**: one line with a status glyph, the tool name in bold, the target dimmed and truncated in the middle, and on the right the result size and duration, or the elapsed time while running. Pending is `◇` dim, running a spinner in amber, done `◆` green, failed `✖` red with the first line of the error in place of the size. A call you denied shows `denied by user` dim. A call still running when the turn ends is marked failed with `interrupted`.
+- **Tool call**: one line with a status glyph, the tool name in bold, the target dimmed and truncated in the middle, and on the right the result size and duration, or the elapsed time while running. Pending is `◇` dim, running a spinner in amber, done `◆` green, failed `✖` red with the first line of the error in place of the size. A call you denied, a call blocked by plan mode and a call not run after a plain deny show their state word dim on the right (`denied`, `blocked`, `not run`), matched by `classifyResultText`. A call still running when the turn ends is marked failed with `interrupted`.
 - **Diff**: when a tool's result carries a unified patch (`ToolDisplayDetails.diff`), it is drawn under the line in unified view with line numbers. Rows are tinted (`addBg`, `removeBg`) in `truecolor` and `256`, shown with colored signs only in `16`, and with sign columns only in `none`. The patch is cut to 40 lines, followed by a dim `… N more lines`. Expand arrives with #14.
 - **Error**: a red framed block titled `ERROR`, the error code as its dim subtitle, the message, and a dim `try:` hint when `ERROR_HINTS` has one for the code.
-- **Notice**: info is a dim `·` line; a warning is an amber `▲` line and also raises the header's warning count. An interrupted turn adds `· interrupted`, a turn limit adds `▲ turn limit reached`, and a session that ends adds `· session ended`.
+- **Notice**: info is a dim `·` line; a warning is an amber `▲` line and also raises the header's warning count. An interrupted turn adds `· interrupted`, a turn limit adds `▲ turn limit reached`, a plain deny adds `· stopped: you denied a tool call`, and a session that ends adds `· session ended`.
+- **Skip all line**: each time the mode enters `skip_all` (at start, or by Shift+Tab), a red `▲ skip all: every tool runs without asking` line is added. It is a screen only `danger` notice, counts as a warning, and stays after the mode moves on.
 
 Every string from outside `tui` (model text, tool output, paths, error text) passes through `sanitizeForScreen` first, which removes escape sequences and control characters and expands tabs, so nothing the model or a tool prints can move the cursor or clear your screen.
 
@@ -206,14 +207,18 @@ Every string from outside `tui` (model text, tool output, paths, error text) pas
 ┌─ PERMISSION  bash wants to run ─────────────── 1 of 2 ┐
    rm -rf dist && bun run build
    { "command": "rm -rf dist && bun run build" }
-   [y] allow once   [a] this session   [n] deny
+   [y] allow once  [a] this command  [n] deny  [e] deny and explain
+
 └─                                                     ─┘
 ```
+
+Narrow, the keys wrap onto the second row: `[y] allow once  [a] this command`, then `[n] deny  [e] deny and explain`. `[a]` reads `this command` for a run (it allows only that exact command) and `this session` for everything else (the whole tool).
 
 - It replaces the input area. Corners and title are amber, and the fill is `surface`. The verb follows the tool's kind: read, write, run, or reach the network.
 - It shows the target, then the call input as indented JSON (at most 6 rows, ending with a dim `…` when cut). Both pass through `redact()` first.
 - For the first 300 ms after a panel shows, every key is ignored, so a keystroke meant for the input never approves anything. The keys row is dim during that pause, then turns to `text` so you can see when the panel starts listening.
-- `y`, `a` and `n` (either case) answer. The input stays mounted but loses focus, so nothing you type reaches it, and your draft comes back afterwards.
+- `y`, `a` and `n` (either case) answer. The input stays mounted but loses focus, so nothing you type reaches it, and your draft comes back afterwards. A plain `n` stops the turn, so you can redirect pk with your next prompt.
+- `e` (either case) swaps the keys for a one line note field, `note › `, with a dim `enter send · esc back` below it, in the same two rows so the panel never moves. Enter denies with your note (trimmed), which goes back to the model as guidance and the turn goes on; an empty note is a plain deny. Esc brings the keys back and sends nothing. The note keeps at most 500 characters; pasted newlines and tabs become spaces. While it is open, `y`, `a`, `n` and Shift+Tab are typed or ignored, never answers.
 - A second request queues behind the first (`1 of 2`), and each newly shown request restarts the pause. The panel never takes more than 40% of the center height; the JSON rows shrink first.
 
 ## Input
@@ -225,6 +230,8 @@ Every string from outside `tui` (model text, tool output, paths, error text) pas
 ```
 
 A framed panel with a `›` caret and a dim placeholder. It grows with your text from 1 to 8 rows (never past 40% of the center), then scrolls. Enter sends; Shift+Enter (in terminals that report it) and Ctrl+J insert a newline. Text that is empty or only spaces is not sent. While a turn runs, the input stays editable but Enter does not send, so two quick presses never send twice.
+
+The shell takes these keys before the input: Ctrl+C, Ctrl+Z, Ctrl+B and F2, PgUp and PgDn, Home and End on an empty input, and Shift+Tab, which steps the permission mode (`normal → accept_edits → plan → normal`, plus `skip_all` after `plan` only when pk started with `--dangerously-skip-permissions`). Shift+Tab is ignored during the permission panel's 300 ms pause, while its note field is open, and in `too_small`.
 
 ## Motion
 

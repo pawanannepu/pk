@@ -106,7 +106,9 @@ describe("footer (spec 0003 AC-9)", () => {
 			const footer = () => t.frame().split("\n").at(-2) ?? "";
 			expect(footer()).toContain("■ normal");
 			expect(footer()).toContain("■ demo/scripted");
-			expect(footer()).toContain("esc stop · ctrl+b/f2 rails · ctrl+c quit");
+			expect(footer()).toContain(
+				"esc stop · shift+tab mode · ctrl+b/f2 rails · ctrl+c quit",
+			);
 			session.push(usage(100, { source: "unknown" }));
 			session.push(usage(100, { source: "unknown" }));
 			await t.advance(50);

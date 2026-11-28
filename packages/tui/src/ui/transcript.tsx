@@ -1,8 +1,8 @@
 import { RGBA } from "@opentui/core";
-import { ToolDisplayDetails } from "@pk/schema";
+import { type ResultOutcome, ToolDisplayDetails } from "@pk/schema";
 import { type Accessor, Index, Match, Show, Switch } from "solid-js";
 import { formatBytes, formatDuration } from "../format.ts";
-import type { ToolView, TranscriptItem } from "../hud/state.ts";
+import type { NoticeLevel, ToolView, TranscriptItem } from "../hud/state.ts";
 import { DIFF_MAX_LINES } from "../hud-constants.ts";
 import { cutPatch } from "../patch.ts";
 import {
@@ -95,19 +95,34 @@ function ReasoningItem(props: { item: Of<"reasoning"> }) {
 	);
 }
 
+/** A notice's glyph and tone: info dim, warning amber, danger red (spec 0006 AC-11). */
+function noticeStyle(
+	level: NoticeLevel,
+	g: { info: string; warn: string },
+): { glyph: string; tone: "textDim" | "amber" | "red" } {
+	switch (level) {
+		case "info":
+			return { glyph: g.info, tone: "textDim" };
+		case "warning":
+			return { glyph: g.warn, tone: "amber" };
+		case "danger":
+			return { glyph: g.warn, tone: "red" };
+		default: {
+			const unreachable: never = level;
+			return unreachable;
+		}
+	}
+}
+
 function NoticeItem(props: { item: Of<"notice"> }) {
 	const g = useHud().glyphs;
+	const style = () => noticeStyle(props.item.level, g);
 	return (
 		<box paddingLeft={INDENT} flexShrink={0}>
 			<text wrapMode="word">
-				<Show
-					when={props.item.level === "warning"}
-					fallback={
-						<Words tone="textDim">{`${g.info} ${sanitizeForScreen(props.item.text)}`}</Words>
-					}
-				>
-					<Words tone="amber">{`${g.warn} ${sanitizeForScreen(props.item.text)}`}</Words>
-				</Show>
+				<Words tone={style().tone}>
+					{`${style().glyph} ${sanitizeForScreen(props.item.text)}`}
+				</Words>
 			</text>
 		</box>
 	);
@@ -139,6 +154,22 @@ function ErrorItem(props: { item: Of<"error">; width: number }) {
 }
 
 /** The right side of a tool line: size and duration, elapsed while running, or the error line. */
+/** The dim state word of a denied, blocked or not run call (spec 0006 AC-12). */
+export function outcomeWord(outcome: ResultOutcome): string {
+	switch (outcome) {
+		case "denied":
+			return "denied";
+		case "blocked":
+			return "blocked";
+		case "not_run":
+			return "not run";
+		default: {
+			const unreachable: never = outcome;
+			return unreachable;
+		}
+	}
+}
+
 function toolRight(tool: ToolView, now: number, dot: string): string {
 	switch (tool.state) {
 		case "pending":
@@ -148,7 +179,9 @@ function toolRight(tool: ToolView, now: number, dot: string): string {
 		case "done":
 			return `${formatBytes(tool.sizeBytes ?? 0)} ${dot} ${formatDuration(tool.durationMs ?? 0)}`;
 		case "failed":
-			return sanitizeForScreen(tool.errorLine ?? "");
+			return tool.outcome === undefined
+				? sanitizeForScreen(tool.errorLine ?? "")
+				: outcomeWord(tool.outcome);
 		default: {
 			const unreachable: never = tool.state;
 			return unreachable;
@@ -258,7 +291,7 @@ function ToolItem(props: { item: Of<"tool">; width: number }) {
 								when={l().t.state === "failed"}
 								fallback={<Words tone="textDim">{l().rightText}</Words>}
 							>
-								<Words tone={l().t.denied ? "textDim" : "red"}>
+								<Words tone={l().t.outcome === undefined ? "red" : "textDim"}>
 									{l().rightText}
 								</Words>
 							</Show>

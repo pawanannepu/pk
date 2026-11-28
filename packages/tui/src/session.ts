@@ -9,8 +9,8 @@ import type {
 
 /**
  * The port the screen drives a session through (spec 0003). `tui` reads core state only from
- * `events`, and speaks back only through these three calls. #6's real session satisfies it as is;
- * today `createScriptedSession` does.
+ * `events`, and speaks back only through these calls. The real `AgentSession` satisfies it, and so
+ * does `createScriptedSession` for the demo.
  */
 export interface TuiSession {
 	/** Every event of the session, in order. Ends when the session ends. */
@@ -21,6 +21,10 @@ export interface TuiSession {
 	respond(requestId: RequestId, answer: PermissionAnswer): void;
 	/** Stops the running turn. Nothing in #4 calls it; Esc wires it in #15. */
 	interrupt(): void;
+	/** Changes the permission mode and emits `mode_change` (spec 0006 AC-9). Shift+Tab calls it. */
+	setMode(mode: PermissionMode): void;
+	/** The mode right now, synchronously, so two fast Shift+Tab presses step two modes. */
+	readonly mode: PermissionMode;
 }
 
 /** A timer handle from `TuiClock`. Opaque to the screen. */
@@ -47,6 +51,8 @@ export interface TuiInfo {
 	readonly home: string;
 	readonly model: ModelRef;
 	readonly mode: PermissionMode;
+	/** True only with `--dangerously-skip-permissions`: Shift+Tab may then reach `skip_all`. */
+	readonly skipAllAvailable: boolean;
 	/** The model's context window in tokens. Unset until the model catalog (#19). */
 	readonly contextWindow?: number;
 }

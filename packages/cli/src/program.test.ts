@@ -191,3 +191,54 @@ describe("unsupportedPlatformMessage", () => {
 		expect(looked).toEqual([]);
 	});
 });
+
+describe("permission mode flags (spec 0006 AC-7)", () => {
+	test("--help lists --mode and --dangerously-skip-permissions", async () => {
+		const c = capture();
+		expect(await main(argv("--help"), c.io)).toBe(EXIT.success);
+		expect(c.out()).toContain("--mode <mode>");
+		expect(c.out()).toContain("--dangerously-skip-permissions");
+		// commander wraps the help column, so match across the line break.
+		expect(c.out().replace(/\s+/g, " ")).toContain(
+			"skip every permission prompt; only for sandboxes",
+		);
+	});
+
+	test("--mode with any other value is a usage error", async () => {
+		for (const bad of ["skip_all", "yolo"]) {
+			const c = capture(true);
+			expect(await main(argv("--mode", bad), c.io)).toBe(EXIT.usage);
+			expect(c.err()).toContain(
+				"Allowed choices are normal, accept_edits, plan",
+			);
+		}
+	});
+
+	test("--mode with the skip flag exits 2 first, with or without a terminal", async () => {
+		for (const tty of [true, false]) {
+			const c = capture(tty);
+			expect(
+				await main(
+					argv("--mode", "plan", "--dangerously-skip-permissions"),
+					c.io,
+				),
+			).toBe(EXIT.usage);
+			expect(c.err()).toBe(
+				"pk: --mode and --dangerously-skip-permissions cannot be used together.\n",
+			);
+		}
+	});
+
+	test("the hidden subcommands neither accept nor read the mode flags", async () => {
+		for (const command of ["__tui-demo", "__tui-smoke"]) {
+			for (const flag of [
+				["--mode", "plan"],
+				["--dangerously-skip-permissions"],
+			]) {
+				const c = capture(true);
+				expect(await main(argv(command, ...flag), c.io)).toBe(EXIT.usage);
+				expect(c.err()).toContain(`do not apply to ${command}`);
+			}
+		}
+	});
+});
