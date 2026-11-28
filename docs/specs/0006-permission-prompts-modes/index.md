@@ -1,7 +1,7 @@
 # 0006. Permission prompts and modes: one decision table, four modes, Shift+Tab to switch
 
 **Date**: 2026-11-28
-**Status**: In Progress
+**Status**: Accepted
 
 ## Summary
 

@@ -23,6 +23,7 @@ Root `## Rules` apply here. In addition:
 - The only package with `.tsx` files and the only importer of `@opentui/*` and `solid-js`.
 - Tests render in memory with `@opentui/core/testing`; the root test preload compiles Solid JSX.
 - Write idiomatic Solid (signals, memos, `<For>`, `<Show>`), not React habits.
+- The shell takes Shift+Tab before the input and steps modes from `session.mode` (the synchronous getter), never from HUD state. Permission panel key handling lives in `src/permission-keys.ts`; the panel's note field state is a local Solid signal in the shell, not HUD state (spec 0006 AC-6, AC-10).
 
 ## Gotchas
 
@@ -38,5 +39,6 @@ Root `## Rules` apply here. In addition:
 ## Related specs
 
 - [spec 0001](../../docs/specs/0001-stack-architecture/index.md) (interactive UI); feature #4
+- [spec 0006](../../docs/specs/0006-permission-prompts-modes/index.md) (permission panel keys and note field, Shift+Tab, mode display)
 
 _Drafted by /audit from the repo, worth a quick human pass. Edit freely: once a line stops matching this draft, later runs treat it as curated and will flag rather than overwrite it._

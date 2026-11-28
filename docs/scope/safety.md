@@ -4,7 +4,7 @@ Permissions and protections, so pk never changes or runs anything the user did n
 
 ## Slice 2: Safe changes
 
-### 7. Permission prompts & modes · in-progress
+### 7. Permission prompts & modes · done
 Writing files and running commands ask first: yes, no, or always for this session, or deny with a note telling the agent what to do instead. Modes: normal, auto accept edits, read only plan mode, and skip all for sandboxes. Shift+Tab switches modes now; `/mode` arrives with #13 (spec 0006).
 **Done when:** no write or command runs without permission in normal mode; a deny note reaches the model as guidance; plan mode blocks every write and command; skip all needs an explicit flag and shows a clear warning. (basis: least privilege)
 spec [0006](../specs/0006-permission-prompts-modes/index.md)

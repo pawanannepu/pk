@@ -19,7 +19,7 @@ _These are recommendations to keep your build orderly, not requirements. Skip an
 | 4 | Terminal UI foundation | Foundation | in-progress | [foundations](foundations.md) |
 | 5 | Provider layer & OpenAI compatible adapter | Slice 1 | done | [providers](providers.md) |
 | 6 | Agent loop & read file tool | Slice 1 | done | [agent](agent.md) |
-| 7 | Permission prompts & modes | Slice 2 | in-progress | [safety](safety.md) |
+| 7 | Permission prompts & modes | Slice 2 | done | [safety](safety.md) |
 | 8 | File write & exact edit tools with diffs | Slice 2 | planned | [tools](tools.md) |
 | 9 | Shell command tool | Slice 2 | planned | [tools](tools.md) |
 | 10 | Permission rules & always ask list | Slice 2 | planned | [safety](safety.md) |
@@ -76,9 +76,9 @@ Deferred (no slice yet): Windows support, screen reader mode, Linux musl support
 
 - [foundations](foundations.md): 2 done, 2 in progress. Stack, standards, data model, terminal UI foundation.
 - [providers](providers.md): 1 done, 7 planned. The provider layer, adapters, login, catalog, model roles, costs, subscription sign in.
-- [agent](agent.md): 1 in progress, 6 planned. The loop, context, system prompt, sessions, compaction, hooks, subagents.
+- [agent](agent.md): 1 done, 6 planned. The loop, context, system prompt, sessions, compaction, hooks, subagents.
 - [tools](tools.md): 6 planned. File, shell, search, to do, MCP and web tools.
-- [safety](safety.md): 1 in progress, 3 planned. Permission prompts, rules, sandbox, undo.
+- [safety](safety.md): 1 done, 3 planned. Permission prompts, rules, sandbox, undo.
 - [terminal](terminal.md): 6 planned. Slash commands, rendering, input, status line, custom commands, images.
 - [headless](headless.md): 3 planned. `pk -p` and pk-bench.
 - [release](release.md): 2 planned. Release, self update, deferred items.

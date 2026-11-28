@@ -35,5 +35,6 @@ Root `## Rules` apply here. In addition:
 - [spec 0001](../../docs/specs/0001-stack-architecture/index.md) (module map, core to frontend contract); shapes owned by #3
 - [spec 0002](../../docs/specs/0002-core-data-model/index.md) (every shape here, settings layering, session file versioning)
 - [spec 0004](../../docs/specs/0004-provider-layer-openai-adapter/index.md) (`FakeScript` and `ProviderErrorCode` in `src/fake-script.ts`, the aborted stream rule in `checkStreamOrder`)
+- [spec 0006](../../docs/specs/0006-permission-prompts-modes/index.md) (`mode_change`, `turn_end denied`, `PLAN_BLOCKED_TEXT`, `NOT_RUN_TEXT`, `classifyResultText`)
 
 _Drafted by /audit from the repo, worth a quick human pass. Edit freely: once a line stops matching this draft, later runs treat it as curated and will flag rather than overwrite it._

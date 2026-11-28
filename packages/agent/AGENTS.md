@@ -23,6 +23,7 @@ Root `## Rules` apply here. In addition:
 - A turn returns `AsyncIterable<AgentEvent>` with exactly one reader; every event has an increasing `seq` and a `type`.
 - Every turn ends with exactly one `turn_end` carrying a `reason`; an abort ends the stream with `turn_end`, never a throw.
 - Questions for the user are events with a `requestId`, answered by `session.respond(requestId, answer)`.
+- The session owns the permission mode: `setMode` and the synchronous `mode` getter, with every `decide` call reading the mode at that moment. A mode change decides a pending prompt again; an abort always beats `respond` and `setMode`. `skip_all` needs `skipAllAvailable` (else `agent.invalid_mode`). A plain deny ends the turn `denied`; a deny with a note continues.
 - `agent` never imports `zod`: tool input is checked by `Tool.validate` from `@pk/tools`, always before `decide`, so bad input never prompts.
 - Tests drive a session with `startSession` from `src/test-support.ts` (the fake provider plus an in memory `FileSystem`); it is not exported from `index.ts`. Its `sleep` does nothing, so a fake step's `eventDelayMs` does not delay; use a stub `Provider` that waits on the signal when a test needs a stream to stay open.
 
@@ -30,5 +31,6 @@ Root `## Rules` apply here. In addition:
 
 - [spec 0001](../../docs/specs/0001-stack-architecture/index.md) (core to frontend contract); features #6, #24, #25
 - [spec 0005](../../docs/specs/0005-agent-loop-read-file/index.md) (the loop, event order, queue, interrupt, turn limit)
+- [spec 0006](../../docs/specs/0006-permission-prompts-modes/index.md) (modes, `setMode`, deny paths, `turn_end denied`)
 
 _Drafted by /audit from the repo, worth a quick human pass. Edit freely: once a line stops matching this draft, later runs treat it as curated and will flag rather than overwrite it._
